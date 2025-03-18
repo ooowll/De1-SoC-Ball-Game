@@ -33,9 +33,12 @@ int prev_ballx = 10;
 int prev_bally = 14;
 int prev_cursorx = 160;
 int prev_cursory = 120;
+float accely = 0.02;
+float vely = 1;
 bool led_array[10] = {0}; 
 int direction_array[4] = {0};
 char b1 = 0, b2 = 0, b3 = 0;
+bool toggle = true;
 
 /* function prototypes */
 void clear_screen();
@@ -62,12 +65,8 @@ int main(void) {
     clear_screen(); // pixel_buffer_start points to the pixel buffer
     while (1) {
 		keyboard();
-		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
 		plot_crosshair(prev_cursorx, prev_cursory, 0);
-		if(balldrop){
-			plot_ball(prev_ballx, prev_bally, 0x0);
-		}
+		plot_ball(prev_ballx, prev_bally, 0x0);
 		prev_cursorx = cursorx;
 		prev_cursory = cursory;
 		prev_ballx = ballx;
@@ -76,6 +75,8 @@ int main(void) {
 		update_ball();
 		plot_crosshair(cursorx, cursory, 0xFFFF);
 		plot_ball(ballx, bally, 0xfd80);
+		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
         
     }
 }
@@ -170,17 +171,23 @@ void wait_for_vsync()
 	} // polling loop/function exits when status bit goes to 0
 }
 void update_ball(void){
-	if(b3 == 0x5A){
+	if(b3 == 0x5A && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
+			toggle = false;
 		}
 	}
+	if(bally + vely >= y_max) vely *= -1;
+	if(bally + vely <= 10) vely *= -1;
 	if(balldrop == true){
-		bally++;
+		bally+= vely;
+		//Hardware timer for acceleration
+		// vely += accely;
 	}
-	if(bally == y_max-1){
-		balldrop = false;
-	}
+	//change toggle conditions
+	// if(bally == y_max-1){
+	// 	balldrop = false;
+	// }
 }
 
 void keyboard(void){
