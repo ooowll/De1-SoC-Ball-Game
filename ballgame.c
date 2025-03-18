@@ -15,13 +15,22 @@
 #include <stdbool.h>
 #include <math.h>	
 #include <stdint.h>
-	
+int x_max = 319;
+int x_min = 0;
+int y_max = 239;
+int y_min = 10;
+bool balldrop = false;	
+
 int pixel_buffer_start;
 short int Buffer1[240][512]; // 240 rows, 512 (320 + padding) columns
 short int Buffer2[240][512];
 
 int cursorx = 160;
 int cursory = 120; 
+int ballx = 10;
+int bally = 14;
+int prev_ballx = 10;
+int prev_bally = 14;
 int prev_cursorx = 160;
 int prev_cursory = 120;
 bool led_array[10] = {0}; 
@@ -52,13 +61,21 @@ int main(void) {
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
     while (1) {
+		keyboard();
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
 		plot_crosshair(prev_cursorx, prev_cursory, 0);
+		if(balldrop){
+			plot_ball(prev_ballx, prev_bally, 0x0);
+		}
 		prev_cursorx = cursorx;
 		prev_cursory = cursory;
+		prev_ballx = ballx;
+		prev_bally = bally;
 		update_cursor();
+		update_ball();
 		plot_crosshair(cursorx, cursory, 0xFFFF);
+		plot_ball(ballx, bally, 0xfd80);
         
     }
 }
@@ -94,6 +111,7 @@ void clear_screen(){
 			plot_pixel(x, y, 0);
 		}
 	}
+	draw_title();
 }
 
 void plot_pixel(int x, int y, short int line_color)
@@ -105,17 +123,17 @@ void plot_pixel(int x, int y, short int line_color)
 void plot_crosshair(int x, int y, short int line_color)
 {
     volatile short int *one_pixel_address;
-	if(x+2 >= 319){
-	x = 319-2;	
+	if(x+2 >= x_max){
+	x = x_max-2;	
 	}
-	if(x-2 <= 0){
-	x = 2;	
+	if(x-2 <= x_min){
+	x = x_min+2;	
 	}
-	if(y+2 >= 239){
-	y = 239-2;	
+	if(y+2 >= y_max){
+	y = y_max-2;	
 	}
-	if(y-2 <= 0){
-	y = 0+2;	
+	if(y-2 <= y_min){
+	y = y_min+2;	
 	}
 	plot_pixel(x, y, line_color);
 	plot_pixel(x+1, y, line_color);
@@ -127,7 +145,18 @@ void plot_crosshair(int x, int y, short int line_color)
 	plot_pixel(x, y-1, line_color);
 	plot_pixel(x, y-2, line_color);
 }
-
+void plot_ball(int x, int y, short int line_color)
+{
+	plot_pixel(x, y, line_color);
+	plot_pixel(x+1, y, line_color);
+	plot_pixel(x+1, y-1, line_color);
+	plot_pixel(x, y-1, line_color);
+	plot_pixel(x-1, y-1, line_color);
+	plot_pixel(x-1, y, line_color);
+	plot_pixel(x-1, y+1, line_color);
+	plot_pixel(x, y+1, line_color);
+	plot_pixel(x+1, y+1, line_color);
+}
 void wait_for_vsync()
 {
 	volatile int * pixel_ctrl_ptr = (int *) 0xff203020; // base address
@@ -140,9 +169,22 @@ void wait_for_vsync()
 		status = *(pixel_ctrl_ptr + 3);
 	} // polling loop/function exits when status bit goes to 0
 }
+void update_ball(void){
+	if(b3 == 0x5A){
+		if(b2 == 0xF0){
+			balldrop = true;
+		}
+	}
+	if(balldrop == true){
+		bally++;
+	}
+	if(bally == y_max-1){
+		balldrop = false;
+	}
+}
 
-void update_cursor(void){
-    volatile int *PS2_ptr = (int *)PS2_BASE;
+void keyboard(void){
+	 volatile int *PS2_ptr = (int *)PS2_BASE;
     int PS2_data, RVALID;
 	PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
 	RVALID = PS2_data & 0x8000; // extract the RVALID field    
@@ -152,6 +194,8 @@ void update_cursor(void){
 		b3 = PS2_data & 0xFF;	
 	}	
 	HEX_PS2(b1, b2, b3);
+}
+void update_cursor(void){
 	//right
 	if(b3 == 0x23){
 		if(b2 == 0xF0){
@@ -191,4 +235,32 @@ void update_cursor(void){
 	} 
 		cursorx = cursorx+direction_array[0]+direction_array[3];
 		cursory = cursory+direction_array[1]+direction_array[2];
+}
+void draw_title() {
+    for (int y = 0; y < 10; y++) {
+        for (int x = 0; x < 320; x++) {
+            plot_pixel(x, y, 0x275a);
+        }
+    }
+
+    char *bounce_master[] = {
+        " *****                                       *    *                                   ",
+        " *    *                                      **  **             	                   ",
+        " *    *                              ****    * ** *         *****   *    ****  * ***  ",
+        " *****  ****** *    *  ****   ***** *    *   *    *  ****   *     ***** *    * **   * ",
+        " *    * *    * *    * *    * *      ******   *	   * *    *	 *****   *   ****** *      ",
+        " *    * *    * *    * *    * *      *        *	   * *    *      *   *   *      *      ",
+        " *****  ******  ****  *    *  *****  *****   *	   *  **** * ***** 	 *    ***** *      "
+    };
+
+    int text_x = (320 - strlen(bounce_master[0])) / 2;
+    int text_y = 1;
+
+    for (int row = 0; row < 7; row++) {
+        for (int col = 0; col < strlen(bounce_master[row]); col++) {
+            if (bounce_master[row][col] == '*') {
+                plot_pixel(text_x + col, text_y + row, 0xFFFF);
+            }
+        }
+    }
 }
