@@ -33,7 +33,7 @@ int cursory = 120;
 int prev_cursorx = 160;
 int prev_cursory = 120;
 int direction_array[4] = {0};
-bool placing_line = false;
+
 
 //Ball Variables
 bool balldrop = false;	
@@ -57,10 +57,14 @@ typedef struct {
     Point p2;
 } Line;
 
-int line_count = 0; //Max 10
+
 //Line array to store line points
 Line lineArray[10];
-
+bool placing_line = false;
+bool exceeded_length = false;
+int line_count = 0; 
+int line_max = 10;
+int max_line_length = 5000;
 
 //Variables for IO
 bool led_array[10] = {0}; 
@@ -98,19 +102,28 @@ int main(void) {
     *(pixel_ctrl_ptr + 1) = (int) &Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
-	for(int i = 0; i<10; i++){
+	for(int i = 0; i<line_max; i++){
 		lineArray[i].p1.x = -1;
 		lineArray[i].p1.y = -1;
 		lineArray[i].p2.x = -1;
 		lineArray[i].p2.y = -1;
 	}
+	int redx0, redy0, redx1, redy1;
     while (1) {
 		keyboard();
-		for(int i = 0; i<10; i++){
+		for(int i = 0; i<line_max; i++){
 			if(lineArray[i].p1.x != -1 &&  lineArray[i].p1.y != -1 &&  lineArray[i].p2.x != -1 && lineArray[i].p2.y != -1){
 				draw_line(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y, 0xFFFF);	
 			}
 		}
+		if(exceeded_length){
+			draw_line(redx0, redy0, redx1, redy1, 0x0);
+			exceeded_length = false;
+		}
+		if(placing_line){
+			draw_line((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, prev_cursorx, prev_cursory, 0x0);	
+		}
+		//	printf("%d\n", calculate_length((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, cursorx, cursory));
 		plot_crosshair(prev_cursorx, prev_cursory, 0);
 		plot_ball(prev_ballx, prev_bally, 0x0);
 		prev_cursorx = cursorx;
@@ -119,8 +132,16 @@ int main(void) {
 		prev_bally = bally;
 		update_cursor();
 		update_ball();
+		if(placing_line){
+			draw_line((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, cursorx, cursory, 0xf800);
+			redx0 = (int)lineArray[line_count].p1.x;
+			redy0 = (int)lineArray[line_count].p1.y;
+			redx1 = cursorx;
+			redy1 = cursory;
+		}
 		plot_crosshair(cursorx, cursory, 0xFFFF);
 		plot_ball(ballx, bally, 0xfd80);
+		plot_line_bar();
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     }
@@ -169,18 +190,6 @@ void plot_pixel(int x, int y, short int line_color)
 }
 void plot_crosshair(int x, int y, short int line_color)
 {
-	if(x+2 >= x_max){
-	x = x_max-2;	
-	}
-	if(x-2 <= x_min){
-	x = x_min+2;	
-	}
-	if(y+2 >= y_max){
-	y = y_max-2;	
-	}
-	if(y-2 <= y_min){
-	y = y_min+2;	
-	}
 	plot_pixel(x, y, line_color);
 	plot_pixel(x+1, y, line_color);
 	plot_pixel(x+2, y, line_color);
@@ -324,7 +333,7 @@ void deflectBall(float x1, float y1, float x2, float y2) {
 }
 
 void keyboard(void){
-	 volatile int *PS2_ptr = (int *)PS2_BASE;
+	volatile int *PS2_ptr = (int *)PS2_BASE;
     int PS2_data, RVALID;
 	PS2_data = *(PS2_ptr); // read the Data register in the PS/2 port
 	RVALID = PS2_data & 0x8000; // extract the RVALID field    
@@ -377,37 +386,68 @@ void update_cursor(void){
 	cursorx = cursorx+direction_array[0]+direction_array[3];
 	cursory = cursory+direction_array[1]+direction_array[2];
 	
+	if(cursorx+2 >= x_max){
+		cursorx = x_max-2;	
+	}
+	if(cursorx-2 <= x_min){
+		cursorx = x_min+2;	
+	}
+	if(cursory+2 >= y_max){
+		cursory = y_max-2;	
+	}
+	if(cursory-2 <= y_min){
+		cursory = y_min+2;	
+	}
+	
 	//line placing
-	if(line_count < 10){
+	if(line_count < line_max){
 		if(b3 == 0x5A){
 			if(b2 == 0xF0){
 				if(!placing_line){
-					if(lineArray[line_count-1].p2.x != cursorx || lineArray[line_count-1].p2.y != cursory){
+					if((int)lineArray[line_count-1].p2.x != cursorx || (int)lineArray[line_count-1].p2.y != cursory){
 						placing_line = true;	
 						lineArray[line_count].p1.x = cursorx;
 						lineArray[line_count].p1.y = cursory;	
-						printf("placing\n");
+						exceeded_length =  false;
 					} 
 				}
 				else if(placing_line){
-					if(lineArray[line_count].p1.x != cursorx || lineArray[line_count].p1.y != cursory){
-						lineArray[line_count].p2.x = cursorx;
-						lineArray[line_count].p2.y = cursory;	
-						placing_line = false;	
-						line_count++;
-						printf("line_count: %d", line_count);
+					if((int)lineArray[line_count].p1.x != cursorx || (int)lineArray[line_count].p1.y != cursory){
+						if(calculate_length((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, cursorx, cursory) < max_line_length){
+							lineArray[line_count].p2.x = cursorx;
+							lineArray[line_count].p2.y = cursory;	
+							placing_line = false;	
+							line_count++;
+							max_line_length -= calculate_length((int)lineArray[line_count].p1.x, 
+																(int)lineArray[line_count].p2.y, 
+																cursorx, cursory);
+							printf("placed line with length %d\n", calculate_length((int)lineArray[line_count].p1.x,
+																					(int)lineArray[line_count].p2.y, 
+																					cursorx, cursory));
+							if(max_line_length <= 0){
+								max_line_length = 0;	
+							}
+						} else {
+							;
+							lineArray[line_count].p1.x = -1;	
+							lineArray[line_count].p1.y = -1;	
+							placing_line = false;
+							exceeded_length = true;
+						}
 					}
 				}
 				b2 = 0; 
 				b3 = 0;
+				
 			}
 		}
 	}
+
 }
 void draw_title() {
     for (int y = 0; y < 10; y++) {
         for (int x = 0; x < 320; x++) {
-            plot_pixel(x, y, 0x275a);
+            plot_pixel(x, y, 0xd1d6);
         }
     }
 
@@ -489,3 +529,22 @@ void draw_line(float fx0, float fy0, float fx1, float fy1, short int line_color)
 		}
 	}
 }
+
+void plot_line_bar(){
+	draw_line(3, 2, 104, 2, 0x0);
+	draw_line(3, 6, 104, 6, 0x0);
+	draw_line(3, 2, 3, 6, 0x0);
+	draw_line(104, 2, 104, 7, 0x0);
+	draw_line(104, 3, (int)(max_line_length/50)+4, 3, 0xd1d6);	
+	draw_line(104, 4, (int)(max_line_length/50)+4, 4, 0xd1d6);	
+	draw_line(104, 5, (int)(max_line_length/50)+4, 5, 0xd1d6);
+	draw_line(4, 3, (int)(max_line_length/50)+4, 3, 0x07e0);	
+	draw_line(4, 4, (int)(max_line_length/50)+4, 4, 0x07e0);	
+	draw_line(4, 5, (int)(max_line_length/50)+4, 5, 0x07e0);
+	
+	
+}
+int calculate_length(int x0, int y0, int x1, int y1){
+	return sqrt(abs((x0-x1)*(x0-x1)) + abs((y0-y1)*(y0-y1)));
+}
+									
