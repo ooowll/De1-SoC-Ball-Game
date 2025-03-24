@@ -33,6 +33,7 @@ int cursory = 120;
 int prev_cursorx = 160;
 int prev_cursory = 120;
 int direction_array[4] = {0};
+bool placing_line = false;
 
 //Ball Variables
 bool balldrop = false;	
@@ -55,8 +56,10 @@ typedef struct {
     Point p1;
     Point p2;
 } Line;
+
+int line_count = 0; //Max 10
 //Line array to store line points
-Line lineArray[1];
+Line lineArray[10];
 
 
 //Variables for IO
@@ -95,16 +98,19 @@ int main(void) {
     *(pixel_ctrl_ptr + 1) = (int) &Buffer2;
     pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
     clear_screen(); // pixel_buffer_start points to the pixel buffer
-	lineArray[0].p1.x = 50;
-	lineArray[0].p1.y = 50;
-	lineArray[0].p2.x = 200;
-	lineArray[0].p2.y = 200;
-	
-	
-
+	for(int i = 0; i<10; i++){
+		lineArray[i].p1.x = -1;
+		lineArray[i].p1.y = -1;
+		lineArray[i].p2.x = -1;
+		lineArray[i].p2.y = -1;
+	}
     while (1) {
 		keyboard();
-		draw_line(lineArray[0].p1.x, lineArray[0].p1.y,lineArray[0].p2.x, lineArray[0].p2.y, 0xFFFF);
+		for(int i = 0; i<10; i++){
+			if(lineArray[i].p1.x != -1 &&  lineArray[i].p1.y != -1 &&  lineArray[i].p2.x != -1 && lineArray[i].p2.y != -1){
+				draw_line(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y, 0xFFFF);	
+			}
+		}
 		plot_crosshair(prev_cursorx, prev_cursory, 0);
 		plot_ball(prev_ballx, prev_bally, 0x0);
 		prev_cursorx = cursorx;
@@ -117,7 +123,6 @@ int main(void) {
 		plot_ball(ballx, bally, 0xfd80);
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-        
     }
 }
 
@@ -164,7 +169,6 @@ void plot_pixel(int x, int y, short int line_color)
 }
 void plot_crosshair(int x, int y, short int line_color)
 {
-    volatile short int *one_pixel_address;
 	if(x+2 >= x_max){
 	x = x_max-2;	
 	}
@@ -191,6 +195,18 @@ void plot_ball(float fx, float fy, short int line_color)
 {
 	int x = round(fx);
 	int y = round(fy);
+	if(x+1 >= x_max){
+		x = x_max-1;	
+	}
+	if(x-1 <= x_min){
+		x = x_min+1;	
+	}
+	if(y+1 >= y_max){
+		y = y_max-1;	
+	}
+	if(y-1 <= y_min){
+		y = y_min+1;	
+	}
 	plot_pixel(x, y, line_color);
 	plot_pixel(x+1, y, line_color);
 	plot_pixel(x+1, y-1, line_color);
@@ -214,7 +230,7 @@ void wait_for_vsync()
 	} // polling loop/function exits when status bit goes to 0
 }
 void update_ball(void){
-	if(b3 == 0x5A && toggle){
+	if(b3 == 0x29 && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
 			toggle = false;
@@ -235,8 +251,6 @@ void update_ball(void){
 		//Hardware timer for acceleration
 		// vely += accely;
 	}
-	if(ballx < 0 || ballx > 300 ) ballx = 10;
-	if(bally < 0 || bally > 200) bally = 14;
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
@@ -360,8 +374,35 @@ void update_cursor(void){
 			direction_array[2] = -1;
 		}
 	} 
-		cursorx = cursorx+direction_array[0]+direction_array[3];
-		cursory = cursory+direction_array[1]+direction_array[2];
+	cursorx = cursorx+direction_array[0]+direction_array[3];
+	cursory = cursory+direction_array[1]+direction_array[2];
+	
+	//line placing
+	if(line_count < 10){
+		if(b3 == 0x5A){
+			if(b2 == 0xF0){
+				if(!placing_line){
+					if(lineArray[line_count-1].p2.x != cursorx || lineArray[line_count-1].p2.y != cursory){
+						placing_line = true;	
+						lineArray[line_count].p1.x = cursorx;
+						lineArray[line_count].p1.y = cursory;	
+						printf("placing\n");
+					} 
+				}
+				else if(placing_line){
+					if(lineArray[line_count].p1.x != cursorx || lineArray[line_count].p1.y != cursory){
+						lineArray[line_count].p2.x = cursorx;
+						lineArray[line_count].p2.y = cursory;	
+						placing_line = false;	
+						line_count++;
+						printf("line_count: %d", line_count);
+					}
+				}
+				b2 = 0; 
+				b3 = 0;
+			}
+		}
+	}
 }
 void draw_title() {
     for (int y = 0; y < 10; y++) {
