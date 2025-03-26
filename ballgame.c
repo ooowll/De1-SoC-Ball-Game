@@ -41,10 +41,11 @@ float ballx = 60;
 float bally = 14;
 float prev_ballx = 100;
 float prev_bally = 14;
-float accely = 0.02;
+float accely = 0.04;
 float vely = 0.8;
 float velx = 0;
 bool toggle = true; // If the ball hasn't moved, toggle is true
+int accelCount = 0;
 
 //Struct for Line
 typedef struct {
@@ -91,6 +92,7 @@ int main(void) {
     volatile int *LEDR = LEDR_BASE;
 	volatile long int *clock = (long int *)CLOCK_BASE;
     volatile int *pixel_ctrl_ptr = (int *)PIXEL_BUF_CTRL_BASE;
+	volatile int* AUDIO_ptr = 0xFF203040;
    /* set front pixel buffer to Buffer 1 */
     *(pixel_ctrl_ptr + 1) = (int) &Buffer1; // first store the address in the  back buffer
     /* now, swap the front/back buffers, to set the front buffer location */
@@ -239,6 +241,7 @@ void wait_for_vsync()
 	} // polling loop/function exits when status bit goes to 0
 }
 void update_ball(void){
+	volatile int* AUDIO_ptr = 0xFF203040;
 	if(b3 == 0x29 && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
@@ -247,19 +250,37 @@ void update_ball(void){
 	}
 	if(bally + vely >= y_max) vely *= -1;
 	if(bally + vely <= 10) vely *= -1;
-	if (collision(ballx, bally, lineArray[0].p1, lineArray[0].p2)) {
-        printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
-        deflectBall(lineArray[0].p1.x, lineArray[0].p1.y, lineArray[0].p2.x, lineArray[0].p2.y);
-        // Nudge ball away to prevent immediate re-collision
-        ballx += velx * 0.1;
-        bally += vely * 0.1;
-    }
+	for(int i = 0; i < line_count; i++){
+		if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
+			printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
+			deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
+			// Nudge ball away to prevent immediate re-collision
+			ballx += velx * 0.1;
+			bally += vely * 0.1;
+			//Play sound
+			for(int i = 0; i < 2000; i++){
+				int fifospace = *(AUDIO_ptr + 1);
+				if((fifospace & 0xFF0000) > 0){
+					*(AUDIO_ptr + 2) = 16777215;
+					*(AUDIO_ptr + 3) = 16777215;
+				}
+			}
+			//Low notes stored into output FIFO
+			for(int i = 0; i < 2000; i++){
+				int fifospace = *(AUDIO_ptr + 1);
+				if((fifospace & 0xFF0000) > 0){
+					*(AUDIO_ptr + 2) = 0;
+					*(AUDIO_ptr + 3) = 0;
+				}
+		}
+	}
 	if(balldrop == true){
+		vely += accely;
 		bally+= vely;
 		ballx += velx;
-		//Hardware timer for acceleration
-		// vely += accely;
+		
 	}
+}
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
