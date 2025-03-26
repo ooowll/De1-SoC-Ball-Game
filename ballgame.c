@@ -41,11 +41,12 @@ float ballx = 60;
 float bally = 14;
 float prev_ballx = 100;
 float prev_bally = 14;
-float accely = 0.04;
-float vely = 0.8;
+float accely = 0.005;
+float vely = 0.5;
 float velx = 0;
 bool toggle = true; // If the ball hasn't moved, toggle is true
 int accelCount = 0;
+int lives = 5;
 
 //Struct for Line
 typedef struct {
@@ -141,12 +142,15 @@ int main(void) {
 			redx1 = cursorx;
 			redy1 = cursory;
 		}
+		if(lives == 0) break;
 		plot_crosshair(cursorx, cursory, 0xFFFF);
 		plot_ball(ballx, bally, 0xfd80);
 		plot_line_bar();
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     }
+	//Draw game over screen or draw game win screen
+
 }
 
 void HEX_PS2(char b1, char b2, char b3) {
@@ -246,39 +250,48 @@ void update_ball(void){
 		if(b2 == 0xF0){
 			balldrop = true;
 			toggle = false;
-		}
-	}
-	if(bally + vely >= y_max) vely *= -1;
-	if(bally + vely <= 10) vely *= -1;
-	for(int i = 0; i < line_count; i++){
-		if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
-			printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
-			deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
-			// Nudge ball away to prevent immediate re-collision
-			ballx += velx * 0.1;
-			bally += vely * 0.1;
-			//Play sound
-			for(int i = 0; i < 2000; i++){
-				int fifospace = *(AUDIO_ptr + 1);
-				if((fifospace & 0xFF0000) > 0){
-					*(AUDIO_ptr + 2) = 16777215;
-					*(AUDIO_ptr + 3) = 16777215;
-				}
-			}
-			//Low notes stored into output FIFO
-			for(int i = 0; i < 2000; i++){
-				int fifospace = *(AUDIO_ptr + 1);
-				if((fifospace & 0xFF0000) > 0){
-					*(AUDIO_ptr + 2) = 0;
-					*(AUDIO_ptr + 3) = 0;
-				}
+			b3 = 0;
+			b2 = 0;
 		}
 	}
 	if(balldrop == true){
+		for(int i = 0; i < line_count; i++){
+			if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
+				printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
+				deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
+				// Nudge ball away to prevent immediate re-collision
+				ballx += velx * 0.1;
+				bally += vely * 0.1;
+				// Play sound
+				for(int i = 0; i < 100; i++){
+					int fifospace = *(AUDIO_ptr + 1);
+					if(i % 2 == 0){
+						if((fifospace & 0xFF0000) > 0){
+							*(AUDIO_ptr + 2) = 16777215;
+							*(AUDIO_ptr + 3) = 16777215;
+						}
+					}
+					else{
+						if((fifospace & 0xFF0000) > 0){
+							*(AUDIO_ptr + 2) = 0;
+							*(AUDIO_ptr + 3) = 0;
+						}
+					}
+				}
+		}
 		vely += accely;
 		bally+= vely;
 		ballx += velx;
 		
+	}
+	if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
+		balldrop = false;
+		ballx = 60;
+		bally = 14;
+		lives--;
+		toggle = true;
+		velx = 0;
+		vely = 0.5;
 	}
 }
 }
@@ -309,7 +322,7 @@ bool collision(float bx, float by, Point p1, Point p2) {
     float distanceSquared = distX * distX + distY * distY;
 
     // Check if the distance is within the ball's radius (1.5)
-    return distanceSquared <= (1.5 * 1.5);
+    return distanceSquared <= (2 * 2);
 }
 
 
@@ -322,7 +335,6 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     float line_length = sqrt(dx * dx + dy * dy);
 
     if (line_length < 1e-6) {
-        printf("Zero-length line detected, cannot deflect ball.\n");
         return;
     }
 
@@ -334,15 +346,11 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     float nx = -dy;
     float ny = dx;
 
-    // Debug: Print the calculated line length and normal vector
-    printf("Line length: %.2f, Normal: (%.2f, %.2f)\n", line_length, nx, ny);
-
     // Dot product of velocity and normal
     float dot_product = velx * nx + vely * ny;
 
-    // If the dot product is close to zero, there's no deflection needed
+    // if dot product is almost 0, ball is parallel to line
     if (fabs(dot_product) < 1e-6) {
-        printf("No deflection needed. Dot product: %.6f\n", dot_product);
         return;
     }
 
@@ -350,7 +358,7 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     velx = velx - 2 * dot_product * nx;
     vely = vely - 2 * dot_product * ny;
 
-    printf("Deflected ball: New velocity (%.2f, %.2f)\n", velx, vely);
+    printf(" (%.2f, %.2f)\n", velx, vely);
 }
 
 void keyboard(void){
