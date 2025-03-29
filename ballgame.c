@@ -335,7 +335,8 @@ void wait_for_vsync()
 	} // polling loop/function exits when status bit goes to 0
 }
 void update_ball(void){
-	volatile int* AUDIO_ptr = 0xFF203040;
+	volatile int* audio_ptr = 0xFF203040;
+	//Keyboard Input
 	if(b3 == 0x29 && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
@@ -344,63 +345,65 @@ void update_ball(void){
 			b2 = 0;
 		}
 	}
+	//Check for line collision
 	if(balldrop == true){
-		for(int i = 0; i < line_count; i++){
-			if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
-				printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
-				deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
-				// Nudge ball away to prevent immediate re-collision
-				ballx += velx * 0.1;
-				bally += vely * 0.1;
-				// Play sound
-				for(int i = 0; i < 100; i++){
-					int fifospace = *(AUDIO_ptr + 1);
-					if(i % 2 == 0){
-						if((fifospace & 0xFF0000) > 0){
-							*(AUDIO_ptr + 2) = 16777215;
-							*(AUDIO_ptr + 3) = 16777215;
-						}
-					}
-					else{
-						if((fifospace & 0xFF0000) > 0){
-							*(AUDIO_ptr + 2) = 0;
-							*(AUDIO_ptr + 3) = 0;
-						}
-					}
+		int num_substeps = 5;
+		float step_velx = velx / num_substeps;
+		float step_vely = vely / num_substeps;
+
+		for(int i = 0; i < num_substeps; i++){
+			
+			ballx += step_velx;
+            bally += step_vely;
+			
+			if (bally <= 10) {
+                bally = 10;
+                vely *= -1;
+                break;
+            }
+			bool coll = false;
+			for(int j = 0; j < line_count; j++){
+				if (collision(ballx, bally, lineArray[j].p1, lineArray[j].p2)) {
+					printf("%f", vely);
+					deflectBall(lineArray[j].p1.x, lineArray[j].p1.y, lineArray[j].p2.x, lineArray[j].p2.y);
+					ballx += velx * 0.5;
+					bally += vely * 0.5;
+					coll = true;
+					break;
 				}
+			}
+			if(coll){
+				break;
+			}
 		}
+		//Accelerate Velocity
 		vely += accely;
-		bally+= vely;
-		ballx += velx;
-		
-	}
-	if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
-		balldrop = false;
-		ballx = 60;
-		bally = 14;
-		lives--;
-		toggle = true;
-		velx = 0;
-		vely = 0.5;
-	}
-}
+		//Check for wall collision
+		if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
+			balldrop = false;
+			ballx = 60;
+			bally = 14;
+			lives--;
+			toggle = true;
+			velx = 0;
+			vely = 0.5;
+		}
+	}	
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
     float dx = p2.x - p1.x; // Direction vector of the line
     float dy = p2.y - p1.y;
 
-    // Handle edge case: Line segment is a point
-    if (dx == 0 && dy == 0) {
-        float dist = sqrt((bx - p1.x) * (bx - p1.x) + (by - p1.y) * (by - p1.y));
-        return dist <= 1.5; // Ball radius is 1.5
-    }
-
     // Project the ball's center onto the line segment
     float t = ((bx - p1.x) * dx + (by - p1.y) * dy) / (dx * dx + dy * dy);
 
     // Clamp t to [0, 1] to stay within the segment
-    t = fmax(0, fmin(1, t));
+    if (t < 0) {
+		t = 0;
+	} else if (t > 1) {
+		t = 1;
+	}
 
     // Find the closest point on the line segment
     float closestX = p1.x + t * dx;
@@ -415,6 +418,23 @@ bool collision(float bx, float by, Point p1, Point p2) {
     return distanceSquared <= (2 * 2);
 }
 
+float isqrt( float number )
+{
+	long i;
+	float x2, y;
+	const float threehalfs = 1.5F;
+
+	x2 = number * 0.5F;
+	y  = number;
+	i  = * ( long * ) &y;                       // evil floating point bit level hacking
+	i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+	y  = * ( float * ) &i;
+	y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
+//	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
+
+	return y;
+}
+
 
 void deflectBall(float x1, float y1, float x2, float y2) {
     // Calculate direction vector of the line
@@ -422,15 +442,11 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     float dy = y2 - y1;
 
     // Calculate magnitude of the line vector
-    float line_length = sqrt(dx * dx + dy * dy);
-
-    if (line_length < 1e-6) {
-        return;
-    }
+    float line_length = isqrt(dx * dx + dy * dy);
 
     // Normalize the direction vector to calculate the normal
-    dx /= line_length;
-    dy /= line_length;
+    dx *= line_length;
+    dy *= line_length;
 
     // Calculate normal vector (perpendicular to the line)
     float nx = -dy;
@@ -447,9 +463,8 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     // Reflect the velocity
     velx = velx - 2 * dot_product * nx;
     vely = vely - 2 * dot_product * ny;
-
-    printf(" (%.2f, %.2f)\n", velx, vely);
 }
+
 
 void keyboard(void){
 	volatile int *PS2_ptr = (int *)PS2_BASE;
