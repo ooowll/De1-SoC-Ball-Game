@@ -245,7 +245,7 @@ void wait_for_vsync()
 	} // polling loop/function exits when status bit goes to 0
 }
 void update_ball(void){
-	volatile int* AUDIO_ptr = 0xFF203040;
+	volatile int* audio_ptr = 0xFF203040;
 	if(b3 == 0x29 && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
@@ -255,35 +255,24 @@ void update_ball(void){
 		}
 	}
 	if(balldrop == true){
-		for(int i = 0; i < line_count; i++){
+		int num_substeps = 5;
+		float step_velx = velx / num_substeps;
+		float step_vely = vely / num_substeps;
+		for(int i = 0; i < num_substeps; i++){
+			ballx += step_velx;
+            bally += step_vely;
+
+			for(int i = 0; i < line_count; i++){
 			if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
-				printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
 				deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
-				// Nudge ball away to prevent immediate re-collision
 				ballx += velx * 0.1;
 				bally += vely * 0.1;
-				// Play sound
-				for(int i = 0; i < 100; i++){
-					int fifospace = *(AUDIO_ptr + 1);
-					if(i % 2 == 0){
-						if((fifospace & 0xFF0000) > 0){
-							*(AUDIO_ptr + 2) = 16777215;
-							*(AUDIO_ptr + 3) = 16777215;
-						}
-					}
-					else{
-						if((fifospace & 0xFF0000) > 0){
-							*(AUDIO_ptr + 2) = 0;
-							*(AUDIO_ptr + 3) = 0;
-						}
-					}
-				}
+				break;
+			}
 		}
 		vely += accely;
-		bally+= vely;
-		ballx += velx;
-		
 	}
+
 	if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
 		balldrop = false;
 		ballx = 60;
