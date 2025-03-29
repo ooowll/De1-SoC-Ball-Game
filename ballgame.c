@@ -72,7 +72,93 @@ int max_line_length = 5000;
 bool led_array[10] = {0}; 
 char b1 = 0, b2 = 0, b3 = 0;
 
+//level variables
+int starx;
+int stary;
+int current_level = 2;
+Line level1[] = {{{0, 80}, {180, 80}},
+				  {{0, 81}, {180, 81}},
+				  {{0, 82}, {180, 82}},
+				  {{0, 83}, {180, 83}},
+				  {{0, 84}, {180, 84}},
+				  {{0, 85}, {180, 85}},
+				  {{0, 86}, {180, 86}},
+				  {{0, 87}, {180, 87}},
+				  
+				  {{319, 180}, {90, 180}},
+				  {{319, 181}, {90, 181}},
+				  {{319, 182}, {90, 182}},
+				  {{319, 183}, {90, 183}},
+				  {{319, 184}, {90, 184}},
+				  {{319, 185}, {90, 185}},
+				  {{319, 186}, {90, 186}},
+				  {{319, 187}, {90, 187}},
+				  
+				  {{319, 180}, {90, 180}},
+				  {{319, 181}, {90, 181}},
+				  {{319, 182}, {90, 182}},
+				  {{319, 183}, {90, 183}},
+				  {{319, 184}, {90, 184}},
+				  {{319, 185}, {90, 185}},
+				  {{319, 186}, {90, 186}},
+				  {{319, 187}, {90, 187}},
+    };
 
+Line level2[] = {{{55, 120}, {180, 40}},
+				  {{55, 121}, {180, 41}},
+				  {{55, 122}, {180, 42}},
+				  {{55, 123}, {180, 43}},
+				  {{55, 124}, {180, 44}},
+				  {{55, 125}, {180, 45}},
+				  {{55, 126}, {180, 46}},
+				  {{55, 127}, {180, 47}},
+				 
+				  {{0, 110}, {40, 110}},
+				  {{0, 111}, {40, 111}},
+				  {{0, 112}, {40, 112}},
+				  {{0, 113}, {40, 113}},
+				  {{0, 114}, {40, 114}},
+				  {{0, 115}, {40, 115}},
+				  {{0, 116}, {40, 116}},
+				  {{0, 117}, {40, 117}},
+				 
+				  {{0, 170}, {80, 170}},
+				  {{0, 171}, {80, 171}},
+				  {{0, 172}, {80, 172}},
+				  {{0, 173}, {80, 173}},
+				  {{0, 174}, {80, 174}},
+				  {{0, 175}, {80, 175}},
+				  {{0, 176}, {80, 176}},
+				  {{0, 177}, {80, 177}},
+				 
+				  {{160, 170}, {168, 170}},
+				  {{160, 171}, {168, 171}},
+				  {{160, 172}, {168, 172}},
+				  {{160, 173}, {168, 173}},
+				  {{160, 174}, {168, 174}},
+				  {{160, 175}, {168, 175}},
+				  {{160, 176}, {168, 176}},
+				  {{160, 177}, {168, 177}},
+				 
+				  {{180, 170}, {188, 170}},
+				  {{180, 171}, {188, 171}},
+				  {{180, 172}, {188, 172}},
+				  {{180, 173}, {188, 173}},
+				  {{180, 174}, {188, 174}},
+				  {{180, 175}, {188, 175}},
+				  {{180, 176}, {188, 176}},
+				  {{180, 177}, {188, 177}},
+				 
+				  {{170, 210}, {178, 210}},
+				  {{170, 211}, {178, 211}},
+				  {{170, 212}, {178, 212}},
+				  {{170, 213}, {178, 213}},
+				  {{170, 214}, {178, 214}},
+				  {{170, 215}, {178, 215}},
+				  {{170, 216}, {178, 216}},
+				  {{170, 217}, {178, 217}},
+    };
+int obstacle_count[5] = {16, 48, 3, 3, 3};
 /* function prototypes */
 void clear_screen();
 void draw_line(float fx0, float fy0, float fx1, float fy1, short int line_color);
@@ -88,8 +174,9 @@ void plot_ball(float fx, float fy, short int line_color);
 void update_ball(void);
 bool collision(float bx, float by, Point p1, Point p2);
 void deflectBall(float x1, float x2, float y1, float y2);
-float isqrt( float number );
-
+void plot_hearts();
+void draw_level(int level);
+void draw_star(int x, int y);
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
 	volatile long int *clock = (long int *)CLOCK_BASE;
@@ -112,8 +199,10 @@ int main(void) {
 		lineArray[i].p2.x = -1;
 		lineArray[i].p2.y = -1;
 	}
+    draw_level(current_level);
 	int redx0, redy0, redx1, redy1;
     while (1) {
+        draw_level(current_level);
 		keyboard();
 		for(int i = 0; i<line_max; i++){
 			if(lineArray[i].p1.x != -1 &&  lineArray[i].p1.y != -1 &&  lineArray[i].p2.x != -1 && lineArray[i].p2.y != -1){
@@ -127,7 +216,6 @@ int main(void) {
 		if(placing_line){
 			draw_line((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, prev_cursorx, prev_cursory, 0x0);	
 		}
-		//	printf("%d\n", calculate_length((int)lineArray[line_count].p1.x, (int)lineArray[line_count].p1.y, cursorx, cursory));
 		plot_crosshair(prev_cursorx, prev_cursory, 0);
 		plot_ball(prev_ballx, prev_bally, 0x0);
 		prev_cursorx = cursorx;
@@ -147,6 +235,7 @@ int main(void) {
 		plot_crosshair(cursorx, cursory, 0xFFFF);
 		plot_ball(ballx, bally, 0xfd80);
 		plot_line_bar();
+        plot_hearts();
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     }
@@ -195,7 +284,6 @@ void plot_pixel(int x, int y, short int line_color)
     one_pixel_address =  pixel_buffer_start + (y << 10) + (x << 1);
     *one_pixel_address = line_color;
 }
-
 void plot_crosshair(int x, int y, short int line_color)
 {
 	plot_pixel(x, y, line_color);
@@ -208,7 +296,6 @@ void plot_crosshair(int x, int y, short int line_color)
 	plot_pixel(x, y-1, line_color);
 	plot_pixel(x, y-2, line_color);
 }
-
 void plot_ball(float fx, float fy, short int line_color)
 {
 	int x = round(fx);
@@ -235,7 +322,6 @@ void plot_ball(float fx, float fy, short int line_color)
 	plot_pixel(x, y+1, line_color);
 	plot_pixel(x+1, y+1, line_color);
 }
-
 void wait_for_vsync()
 {
 	volatile int * pixel_ctrl_ptr = (int *) 0xff203020; // base address
@@ -248,10 +334,8 @@ void wait_for_vsync()
 		status = *(pixel_ctrl_ptr + 3);
 	} // polling loop/function exits when status bit goes to 0
 }
-
 void update_ball(void){
-	volatile int* audio_ptr = 0xFF203040;
-	//Keyboard Input
+	volatile int* AUDIO_ptr = 0xFF203040;
 	if(b3 == 0x29 && toggle){
 		if(b2 == 0xF0){
 			balldrop = true;
@@ -260,65 +344,63 @@ void update_ball(void){
 			b2 = 0;
 		}
 	}
-	//Check for line collision
 	if(balldrop == true){
-		int num_substeps = 5;
-		float step_velx = velx / num_substeps;
-		float step_vely = vely / num_substeps;
-
-		for(int i = 0; i < num_substeps; i++){
-			
-			ballx += step_velx;
-            bally += step_vely;
-			
-			if (bally <= 10) {
-                bally = 10;
-                vely *= -1;
-                break;
-            }
-			bool coll = false;
-			for(int j = 0; j < line_count; j++){
-				if (collision(ballx, bally, lineArray[j].p1, lineArray[j].p2)) {
-					printf("%f", vely);
-					deflectBall(lineArray[j].p1.x, lineArray[j].p1.y, lineArray[j].p2.x, lineArray[j].p2.y);
-					ballx += velx * 0.5;
-					bally += vely * 0.5;
-					coll = true;
-					break;
+		for(int i = 0; i < line_count; i++){
+			if (collision(ballx, bally, lineArray[i].p1, lineArray[i].p2)) {
+				printf("Collision detected! Ball position: (%f, %f)\n", ballx, bally);
+				deflectBall(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y);
+				// Nudge ball away to prevent immediate re-collision
+				ballx += velx * 0.1;
+				bally += vely * 0.1;
+				// Play sound
+				for(int i = 0; i < 100; i++){
+					int fifospace = *(AUDIO_ptr + 1);
+					if(i % 2 == 0){
+						if((fifospace & 0xFF0000) > 0){
+							*(AUDIO_ptr + 2) = 16777215;
+							*(AUDIO_ptr + 3) = 16777215;
+						}
+					}
+					else{
+						if((fifospace & 0xFF0000) > 0){
+							*(AUDIO_ptr + 2) = 0;
+							*(AUDIO_ptr + 3) = 0;
+						}
+					}
 				}
-			}
-			if(coll){
-				break;
-			}
 		}
-		//Accelerate Velocity
 		vely += accely;
-		//Check for wall collision
-		if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
-			balldrop = false;
-			ballx = 60;
-			bally = 14;
-			lives--;
-			toggle = true;
-			velx = 0;
-			vely = 0.5;
-		}
-	}	
+		bally+= vely;
+		ballx += velx;
+		
+	}
+	if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
+		balldrop = false;
+		ballx = 60;
+		bally = 14;
+		lives--;
+		toggle = true;
+		velx = 0;
+		vely = 0.5;
+	}
+}
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
     float dx = p2.x - p1.x; // Direction vector of the line
     float dy = p2.y - p1.y;
 
+    // Handle edge case: Line segment is a point
+    if (dx == 0 && dy == 0) {
+        float dist = sqrt((bx - p1.x) * (bx - p1.x) + (by - p1.y) * (by - p1.y));
+        return dist <= 1.5; // Ball radius is 1.5
+    }
+
     // Project the ball's center onto the line segment
     float t = ((bx - p1.x) * dx + (by - p1.y) * dy) / (dx * dx + dy * dy);
 
     // Clamp t to [0, 1] to stay within the segment
-    if (t < 0) {
-		t = 0;
-	} else if (t > 1) {
-		t = 1;
-	}
+    t = fmax(0, fmin(1, t));
 
     // Find the closest point on the line segment
     float closestX = p1.x + t * dx;
@@ -333,23 +415,6 @@ bool collision(float bx, float by, Point p1, Point p2) {
     return distanceSquared <= (2 * 2);
 }
 
-float isqrt( float number )
-{
-	long i;
-	float x2, y;
-	const float threehalfs = 1.5F;
-
-	x2 = number * 0.5F;
-	y  = number;
-	i  = * ( long * ) &y;                       // evil floating point bit level hacking
-	i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
-	y  = * ( float * ) &i;
-	y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
-//	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
-
-	return y;
-}
-
 
 void deflectBall(float x1, float y1, float x2, float y2) {
     // Calculate direction vector of the line
@@ -357,11 +422,15 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     float dy = y2 - y1;
 
     // Calculate magnitude of the line vector
-    float line_length = isqrt(dx * dx + dy * dy);
+    float line_length = sqrt(dx * dx + dy * dy);
+
+    if (line_length < 1e-6) {
+        return;
+    }
 
     // Normalize the direction vector to calculate the normal
-    dx *= line_length;
-    dy *= line_length;
+    dx /= line_length;
+    dy /= line_length;
 
     // Calculate normal vector (perpendicular to the line)
     float nx = -dy;
@@ -379,6 +448,7 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     velx = velx - 2 * dot_product * nx;
     vely = vely - 2 * dot_product * ny;
 
+    printf(" (%.2f, %.2f)\n", velx, vely);
 }
 
 void keyboard(void){
@@ -496,7 +566,7 @@ void update_cursor(void){
 void draw_title() {
     for (int y = 0; y < 10; y++) {
         for (int x = 0; x < 320; x++) {
-            plot_pixel(x, y, 0xd1d6);
+            plot_pixel(x, y, 0xad75);
         }
     }
 
@@ -584,9 +654,9 @@ void plot_line_bar(){
 	draw_line(3, 6, 104, 6, 0x0);
 	draw_line(3, 2, 3, 6, 0x0);
 	draw_line(104, 2, 104, 7, 0x0);
-	draw_line(104, 3, (int)(max_line_length/50)+4, 3, 0xd1d6);	
-	draw_line(104, 4, (int)(max_line_length/50)+4, 4, 0xd1d6);	
-	draw_line(104, 5, (int)(max_line_length/50)+4, 5, 0xd1d6);
+	draw_line(104, 3, (int)(max_line_length/50)+4, 3, 0xad75);	
+	draw_line(104, 4, (int)(max_line_length/50)+4, 4, 0xad75);	
+	draw_line(104, 5, (int)(max_line_length/50)+4, 5, 0xad75);
 	draw_line(4, 3, (int)(max_line_length/50)+4, 3, 0x07e0);	
 	draw_line(4, 4, (int)(max_line_length/50)+4, 4, 0x07e0);	
 	draw_line(4, 5, (int)(max_line_length/50)+4, 5, 0x07e0);
@@ -596,4 +666,104 @@ void plot_line_bar(){
 int calculate_length(int x0, int y0, int x1, int y1){
 	return sqrt(abs((x0-x1)*(x0-x1)) + abs((y0-y1)*(y0-y1)));
 }
-									
+
+void draw_star(int x, int y){
+	plot_pixel(x, y, 0xff60);
+	plot_pixel(x+3, y+3, 0xff60);
+	plot_pixel(x-3, y+3, 0xff60);
+	plot_pixel(x-3, y-3, 0xff60);
+	plot_pixel(x+3, y-3, 0xff60);
+	draw_line(x-2, y-2, x+2, y-2, 0xff60);
+	draw_line(x-2, y+2, x+2, y+2, 0xff60);
+	draw_line(x-2, y-2, x-2, y+2, 0xff60);
+	draw_line(x+2, y-2, x+2, y+3, 0xff60);
+}
+
+void plot_hearts(){
+    int x;
+    for(x = 260; x < 290; x+=6){
+        plot_pixel(x, 2, 0xad75);
+        plot_pixel(x+1, 2, 0xad75);
+        plot_pixel(x+2, 2, 0xad75);
+        plot_pixel(x+3, 2, 0xad75);
+        plot_pixel(x+4, 2, 0xad75);
+
+        plot_pixel(x, 3, 0xad75);
+        plot_pixel(x+1, 3, 0xad75);
+        plot_pixel(x+2, 3, 0xad75);
+        plot_pixel(x+3, 3, 0xad75);
+        plot_pixel(x+4, 3, 0xad75);
+
+        plot_pixel(x, 4, 0xad75);
+        plot_pixel(x+1, 4, 0xad75);
+        plot_pixel(x+2, 4, 0xad75);
+        plot_pixel(x+3, 4, 0xad75);
+        plot_pixel(x+4, 4, 0xad75);
+
+        plot_pixel(x, 5, 0xad75);
+        plot_pixel(x+1, 5, 0xad75);
+        plot_pixel(x+2, 5, 0xad75);
+        plot_pixel(x+3, 5, 0xad75);
+        plot_pixel(x+4, 5, 0xad75);
+
+        plot_pixel(x, 6, 0xad75);
+        plot_pixel(x+1, 6, 0xad75);
+        plot_pixel(x+2, 6, 0xad75);
+        plot_pixel(x+3, 6, 0xad75);
+        plot_pixel(x+4, 6, 0xad75);
+    }
+    if(lives > 0){
+        for(x = 260; x < 260 + (lives*6); x+=6){
+            plot_pixel(x, 2, 0xad75);
+            plot_pixel(x+1, 2, 0xf800);
+            plot_pixel(x+2, 2, 0xad75);
+            plot_pixel(x+3, 2, 0xf800);
+            plot_pixel(x+4, 2, 0xad75);
+
+            plot_pixel(x, 3, 0xf800);
+            plot_pixel(x+1, 3, 0xf800);
+            plot_pixel(x+2, 3, 0xf800);
+            plot_pixel(x+3, 3, 0xf800);
+            plot_pixel(x+4, 3, 0xf800);
+
+            plot_pixel(x, 4, 0xf800);
+            plot_pixel(x+1, 4, 0xf800);
+            plot_pixel(x+2, 4, 0xf800);
+            plot_pixel(x+3, 4, 0xf800);
+            plot_pixel(x+4, 4, 0xf800);
+
+            plot_pixel(x, 5, 0xad75);
+            plot_pixel(x+1, 5, 0xf800);
+            plot_pixel(x+2, 5, 0xf800);
+            plot_pixel(x+3, 5, 0xf800);
+            plot_pixel(x+4, 5, 0xad75);
+
+            plot_pixel(x, 6, 0xad75);
+            plot_pixel(x+1, 6, 0xad75);
+            plot_pixel(x+2, 6, 0xf800);
+            plot_pixel(x+3, 6, 0xad75);
+            plot_pixel(x+4, 6, 0xad75);
+        }
+    }
+
+}
+
+void draw_level(int level){
+	
+	if(level == 1){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0x059f);	
+		}
+		starx = 20;
+		stary = 160;
+	}
+	
+	if(level == 2){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0x059f);	
+		}
+		starx = 174;
+		stary = 195;
+	}
+	draw_star(starx, stary);
+}
