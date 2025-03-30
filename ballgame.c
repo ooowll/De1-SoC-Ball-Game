@@ -180,6 +180,8 @@ void deflectBall(float x1, float x2, float y1, float y2);
 void plot_hearts();
 void draw_level(int level);
 void draw_star(int x, int y);
+int iround(float x);
+
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
 	volatile long int *clock = (long int *)CLOCK_BASE;
@@ -301,8 +303,8 @@ void plot_crosshair(int x, int y, short int line_color)
 }
 void plot_ball(float fx, float fy, short int line_color)
 {
-	int x = round(fx);
-	int y = round(fy);
+	int x = iround(fx);
+	int y = iround(fy);
 	if(x+1 >= x_max){
 		x = x_max-1;	
 	}
@@ -488,7 +490,7 @@ void deflectBall(float x1, float y1, float x2, float y2) {
     float dot_product = velx * nx + vely * ny;
 
     // if dot product is almost 0, ball is parallel to line
-    if (fabs(dot_product) < 1e-6) {
+    if (dot_product < 1e-6 && dot_product > -1e-6) {
         return;
     }
 
@@ -640,10 +642,10 @@ void draw_title() {
 }
 
 void draw_line(float fx0, float fy0, float fx1, float fy1, short int line_color){
-	int x0 = round(fx0);
-	int y0 = round(fy0);
-	int x1 = round(fx1);
-	int y1 = round(fy1);
+	int x0 = iround(fx0);
+	int y0 = iround(fy0);
+	int x1 = iround(fx1);
+	int y1 = iround(fy1);
 
 	bool is_steep = abs(y1-y0) > abs(x1 - x0);
 	if(is_steep){
@@ -813,4 +815,13 @@ void draw_level(int level){
 		stary = 195;
 	}
 	draw_star(starx, stary);
+}
+
+int iround(float x){
+	if(x - (int)x > 0.5){
+		return (int)x + 1;
+	}
+	else{
+		return (int)x;
+	}
 }
