@@ -15,6 +15,7 @@
 #define PIXEL_BUF_CTRL_BASE 0xFF203020
 #define AUDIO_BASE 0xFF203040
 #define CLOCK_BASE 0xFF202100
+#define CHAR_BASE 0x9000000
 
 //VGA boundaries
 int x_max = 319;
@@ -75,7 +76,7 @@ char b1 = 0, b2 = 0, b3 = 0;
 //level variables
 int starx;
 int stary;
-int current_level = 2;
+int current_level = 1;
 
 
 Line level1[] = {{{0, 80}, {180, 80}},
@@ -181,6 +182,10 @@ void plot_hearts();
 void draw_level(int level);
 void draw_star(int x, int y);
 int iround(float x);
+void writeCharacter(char character, int x, int y);
+void writeWord(char word[], int x, int y);
+void drawMenu();
+void clearChar();
 
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
@@ -203,6 +208,19 @@ int main(void) {
 		lineArray[i].p1.y = -1;
 		lineArray[i].p2.x = -1;
 		lineArray[i].p2.y = -1;
+	}
+	while(1){
+		drawMenu();
+		clear_screen();
+		char start[] = "Press [Space] to Start";
+		writeWord(start, 29, 55);
+		keyboard();
+		if(b3 == 0x29 && b2 == 0xF0){
+			clearChar();
+			b3 = 0;
+			b2 = 0;
+			break;
+		}
 	}
     draw_level(current_level);
 	int redx0, redy0, redx1, redy1;
@@ -271,6 +289,14 @@ void HEX_PS2(char b1, char b2, char b3) {
 	/* drive the hex displays */
 	*(HEX3_HEX0_ptr) = *(int *)(hex_segs);
 	*(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
+}
+
+void clearChar(){
+	for(int i = 0; i < 80; i++){
+		for(int j = 0; j < 60; j++){
+			writeCharacter(' ', i, j);
+		}
+	}
 }
 
 void clear_screen(){
@@ -369,7 +395,6 @@ void update_ball(void){
 			bool coll = false;
 			for(int j = 0; j < line_count; j++){
 				if (collision(ballx, bally, lineArray[j].p1, lineArray[j].p2)) {
-					printf("%f", vely);
 					deflectBall(lineArray[j].p1.x, lineArray[j].p1.y, lineArray[j].p2.x, lineArray[j].p2.y);
 					ballx += velx * 0.5;
 					bally += vely * 0.5;
@@ -798,7 +823,7 @@ void plot_hearts(){
 }
 
 void draw_level(int level){
-	
+
 	if(level == 1){
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0x059f);	
@@ -823,5 +848,34 @@ int iround(float x){
 	}
 	else{
 		return (int)x;
+	}
+}
+
+void writeCharacter(char character, int x, int y) {
+    // pointer to character buffer
+    volatile char *char_buffer = (char *)CHAR_BASE;
+
+    // format word
+    int offset = (y << 7) + x;
+
+    // write word into memory
+    char_buffer[offset] = character;
+    return;
+}
+
+void writeWord(char word[], int x, int y){
+	int size = strlen(word);
+	for(int i = 0; i < size; i++){
+		writeCharacter(word[i], x + i, y);
+		//writeCharacter(word[i], x, y + i);
+	}
+}
+
+void drawMenu(){
+	char word1[] = "PRESS [SPACE]";
+	for(int i = 0; i < 10; i++){
+		int randx = 10 + rand() % 49;
+		int randy = 10 + rand() % 41;
+		writeWord(word1, randx, randy);
 	}
 }
