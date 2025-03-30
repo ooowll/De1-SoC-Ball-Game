@@ -17,6 +17,17 @@
 #define CLOCK_BASE 0xFF202100
 #define CHAR_BASE 0x9000000
 
+//Struct for Line
+typedef struct {
+    float x;
+    float y;
+} Point;
+
+typedef struct {
+    Point p1;
+    Point p2;
+} Line;
+
 //VGA boundaries
 int x_max = 319;
 int x_min = 0;
@@ -48,18 +59,12 @@ float velx = 0;
 bool toggle = true; // If the ball hasn't moved, toggle is true
 int accelCount = 0;
 int lives = 5;
+bool endpoint;
 
-//Struct for Line
-typedef struct {
-    float x;
-    float y;
-} Point;
 
-typedef struct {
-    Point p1;
-    Point p2;
-} Line;
 
+
+Point hitPoint;
 
 //Line array to store line points
 Line lineArray[10];
@@ -77,6 +82,7 @@ char b1 = 0, b2 = 0, b3 = 0;
 int starx;
 int stary;
 int current_level = 1;
+int previous_level = 1;
 
 
 Line level1[] = {{{0, 80}, {180, 80}},
@@ -186,6 +192,9 @@ void writeCharacter(char character, int x, int y);
 void writeWord(char word[], int x, int y);
 void drawMenu();
 void clearChar();
+void erase_level(int level);
+void nextLevel();
+void reflectOffPoint(float px, float py);
 
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
@@ -209,6 +218,7 @@ int main(void) {
 		lineArray[i].p2.x = -1;
 		lineArray[i].p2.y = -1;
 	}
+	//Main Menu Screen
 	while(1){
 		drawMenu();
 		clear_screen();
@@ -394,8 +404,14 @@ void update_ball(void){
             }
 			bool coll = false;
 			for(int j = 0; j < line_count; j++){
+				endpoint = false;
 				if (collision(ballx, bally, lineArray[j].p1, lineArray[j].p2)) {
-					deflectBall(lineArray[j].p1.x, lineArray[j].p1.y, lineArray[j].p2.x, lineArray[j].p2.y);
+					if(endpoint){
+						reflectOffPoint(hitPoint.x, hitPoint.y);
+					}
+					else{
+						deflectBall(lineArray[j].p1.x, lineArray[j].p1.y, lineArray[j].p2.x, lineArray[j].p2.y);
+					}
 					ballx += velx * 0.5;
 					bally += vely * 0.5;
 					coll = true;
@@ -434,10 +450,27 @@ void update_ball(void){
 		}
 		//Check for victory condition
 		if(ballx >= starx - 4 && ballx <= starx + 4 && bally >= stary - 4 && bally <= stary + 4){
-			current_level++;
+			printf("nia");
+			nextLevel();
+			return;
 		}
 
 	}	
+}
+void nextLevel(){
+	balldrop = false;
+	ballx = 60;
+	bally = 14;
+	toggle = true;
+	velx = 0;
+	vely = 0.5;
+	for(int i = 0; i<line_max; i++){
+		lineArray[i].p1.x = -1;
+		lineArray[i].p1.y = -1;
+		lineArray[i].p2.x = -1;
+		lineArray[i].p2.y = -1;
+	}
+	current_level++;
 }
 
 void liveLost(){
@@ -473,8 +506,15 @@ bool collision(float bx, float by, Point p1, Point p2) {
     float distY = by - closestY;
     float distanceSquared = distX * distX + distY * distY;
 
-    // Check if the distance is within the ball's radius (1.5)
-    return distanceSquared <= (2 * 2);
+    if (distanceSquared <= (2 * 2)) {
+        endpoint = (t == 0 || t == 1); // If t is 0 or 1, it's an endpoint
+        if (endpoint) {
+            hitPoint.x = (t == 0) ? p1.x : p2.x;
+            hitPoint.y = (t == 0) ? p1.y : p2.y;
+        }
+        return true;
+    }
+    return false;
 }
 
 float isqrt( float number )
@@ -494,6 +534,26 @@ float isqrt( float number )
 	return y;
 }
 
+void reflectOffPoint(float px, float py) {
+    float dx = ballx - px;
+    float dy = bally - py;
+
+    float dist_sq = dx * dx + dy * dy;
+    if (dist_sq < 1e-6) return; // Avoid division by zero
+
+    float invDist = isqrt(dist_sq);
+    dx *= invDist;
+    dy *= invDist;
+
+    // Reflect velocity using the direction from the endpoint
+    float dot_product = velx * dx + vely * dy;
+    velx -= 2 * dot_product * dx;
+    vely -= 2 * dot_product * dy;
+
+    // Move the ball slightly away to avoid re-colliding instantly
+    ballx = px + dx * 2;
+    bally = py + dy * 2;
+}
 
 void deflectBall(float x1, float y1, float x2, float y2) {
     // Calculate direction vector of the line
@@ -835,6 +895,26 @@ void draw_level(int level){
 	if(level == 2){
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0x059f);	
+		}
+		starx = 174;
+		stary = 195;
+	}
+	draw_star(starx, stary);
+}
+
+void erase_level(int level){
+
+	if(level == 1){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0);	
+		}
+		starx = 20;
+		stary = 160;
+	}
+	
+	if(level == 2){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0);	
 		}
 		starx = 174;
 		stary = 195;
