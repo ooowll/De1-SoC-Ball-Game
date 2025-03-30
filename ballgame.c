@@ -76,6 +76,8 @@ char b1 = 0, b2 = 0, b3 = 0;
 int starx;
 int stary;
 int current_level = 2;
+
+
 Line level1[] = {{{0, 80}, {180, 80}},
 				  {{0, 81}, {180, 81}},
 				  {{0, 82}, {180, 82}},
@@ -156,9 +158,10 @@ Line level2[] = {{{55, 120}, {180, 40}},
 				  {{170, 214}, {178, 214}},
 				  {{170, 215}, {178, 215}},
 				  {{170, 216}, {178, 216}},
-				  {{170, 217}, {178, 217}},
+				  {{170, 217}, {178, 217}}, 
     };
 int obstacle_count[5] = {16, 48, 3, 3, 3};
+
 /* function prototypes */
 void clear_screen();
 void draw_line(float fx0, float fy0, float fx1, float fy1, short int line_color);
@@ -380,15 +383,44 @@ void update_ball(void){
 		vely += accely;
 		//Check for wall collision
 		if(ballx <= 0 ||ballx >= 319 ||bally >= 239){
-			balldrop = false;
-			ballx = 60;
-			bally = 14;
-			lives--;
-			toggle = true;
-			velx = 0;
-			vely = 0.5;
+			liveLost();
 		}
+
+		//Check for obstacle collision
+		if(current_level == 1){
+			int size =  sizeof(level1) / sizeof(level1[0]);
+			for (int i = 0; i < size; i++){
+				if(collision(ballx, bally, level1[i].p1, level1[i].p2)){
+					liveLost();
+					break;
+				}
+			}
+		}
+		if(current_level == 2){
+			int size =  sizeof(level2) / sizeof(level2[0]);
+			for (int i = 0; i < size; i++){
+				if(collision(ballx, bally, level2[i].p1, level2[i].p2)){
+					liveLost();
+					break;
+				}
+			}
+		}
+		//Check for victory condition
+		if(ballx >= starx - 4 && ballx <= starx + 4 && bally >= stary - 4 && bally <= stary + 4){
+			current_level++;
+		}
+
 	}	
+}
+
+void liveLost(){
+	balldrop = false;
+	ballx = 60;
+	bally = 14;
+	lives--;
+	toggle = true;
+	velx = 0;
+	vely = 0.5;
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
