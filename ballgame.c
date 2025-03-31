@@ -60,7 +60,7 @@ bool toggle = true; // If the ball hasn't moved, toggle is true
 int accelCount = 0;
 int lives = 5;
 bool endpoint;
-
+int portalDelayCount = 0;
 
 int redx0, redy0, redx1, redy1;
 
@@ -373,6 +373,8 @@ void clearChar();
 void erase_level(int level);
 void nextLevel();
 void reflectOffPoint(float px, float py);
+void attemptsHex();
+void playLossNoise();
 
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
@@ -409,10 +411,12 @@ int main(void) {
 			b2 = 0;
 			break;
 		}
+		attemptsHex();
 	}
     draw_level(current_level);
 	
     while (1) {
+		attemptsHex();
         draw_level(current_level);
 		keyboard();	
 		if(exceeded_length){
@@ -478,6 +482,21 @@ void HEX_PS2(char b1, char b2, char b3) {
 	/* drive the hex displays */
 	*(HEX3_HEX0_ptr) = *(int *)(hex_segs);
 	*(HEX5_HEX4_ptr) = *(int *)(hex_segs + 4);
+}
+
+void attemptsHex() {
+    volatile int *HEX3_HEX0_ptr = (int *)HEX3_HEX0_BASE;
+    volatile int *HEX5_HEX4_ptr = (int *)HEX5_HEX4_BASE;
+    // Seven-segment encoding for hex digits 0-F
+    unsigned char seven_seg_decode_table[] = {
+        0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,
+        0x7F, 0x67, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71
+    };
+    int ones = line_count % 10;  
+    int tens = line_count / 10;  
+	unsigned int hex_display = (seven_seg_decode_table[tens] << 8) | seven_seg_decode_table[ones];
+    *(HEX3_HEX0_ptr) = hex_display; 
+    *(HEX5_HEX4_ptr) = 0;             
 }
 
 void clearChar(){
@@ -554,6 +573,7 @@ void wait_for_vsync()
 		status = *(pixel_ctrl_ptr + 3);
 	} // polling loop/function exits when status bit goes to 0
 }
+
 void update_ball(void){
 	volatile int* audio_ptr = 0xFF203040;
 	//Keyboard Input
@@ -627,9 +647,42 @@ void update_ball(void){
 				}
 			}
 		}
+		if(current_level == 3){
+			int size =  sizeof(level3) / sizeof(level3[0]);
+			for (int i = 0; i < size; i++){
+				if(collision(ballx, bally, level3[i].p1, level3[i].p2)){
+					liveLost();
+					break;
+				}
+			}
+		}
+		if(current_level == 4){
+			int size =  sizeof(level4) / sizeof(level4[0]);
+			for (int i = 0; i < size; i++){
+				if(collision(ballx, bally, level4[i].p1, level4[i].p2)){
+					liveLost();
+					break;
+				}
+			}
+		}
+		//Collision with portal
+		for(int i = 0; i < 2; i++){
+			if(ballx >= portalx[i] - 4 && ballx <= portalx[i] + 4 && bally >= portaly[i] - 4 && bally <= portaly[i] + 4){
+				if(portalDelayCount == 0){
+					portalTravel(i);
+					portalDelayCount++;
+					break;
+				}
+				else{
+					portalDelayCount++;
+					if(portalDelayCount == 10){
+						portalDelayCount = 0;
+					}
+				}
+			}
+		}
 		//Check for victory condition
 		if(ballx >= starx - 10 && ballx <= starx + 10 && bally >= stary - 10 && bally <= stary + 10){
-			printf("nia");
 			nextLevel();
 			return;
 		}
@@ -650,6 +703,8 @@ void nextLevel(){
 		lineArray[i].p2.x = -1;
 		lineArray[i].p2.y = -1;
 	}
+	line_count = 0;
+	max_line_length = 5000;
 	current_level++;
 }
 
@@ -664,30 +719,28 @@ void liveLost(){
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
-    float dx = p2.x - p1.x; // Direction vector of the line
+    float dx = p2.x - p1.x; 
     float dy = p2.y - p1.y;
 
-    // Project the ball's center onto the line segment
     float t = ((bx - p1.x) * dx + (by - p1.y) * dy) / (dx * dx + dy * dy);
 
-    // Clamp t to [0, 1] to stay within the segment
     if (t < 0) {
 		t = 0;
 	} else if (t > 1) {
 		t = 1;
 	}
 
-    // Find the closest point on the line segment
+    // closest point
     float closestX = p1.x + t * dx;
     float closestY = p1.y + t * dy;
 
-    // Calculate the distance from the ball's center to the closest point
+    // distance
     float distX = bx - closestX;
     float distY = by - closestY;
     float distanceSquared = distX * distX + distY * distY;
 
-    if (distanceSquared <= (2 * 2)) {
-        endpoint = (t == 0 || t == 1); // If t is 0 or 1, it's an endpoint
+    if (distanceSquared <= 4) {
+        endpoint = (t == 0 || t == 1); 
         if (endpoint) {
             hitPoint.x = (t == 0) ? p1.x : p2.x;
             hitPoint.y = (t == 0) ? p1.y : p2.y;
@@ -705,12 +758,10 @@ float isqrt( float number )
 
 	x2 = number * 0.5F;
 	y  = number;
-	i  = * ( long * ) &y;                       // evil floating point bit level hacking
-	i  = 0x5f3759df - ( i >> 1 );               // what the fuck?
+	i  = * ( long * ) &y;                     
+	i  = 0x5f3759df - ( i >> 1 );               
 	y  = * ( float * ) &i;
-	y  = y * ( threehalfs - ( x2 * y * y ) );   // 1st iteration
-//	y  = y * ( threehalfs - ( x2 * y * y ) );   // 2nd iteration, this can be removed
-
+	y  = y * ( threehalfs - ( x2 * y * y ) );   
 	return y;
 }
 
@@ -719,39 +770,31 @@ void reflectOffPoint(float px, float py) {
     float dy = bally - py;
 
     float dist_sq = dx * dx + dy * dy;
-    if (dist_sq < 1e-6) return; // Avoid division by zero
+    if (dist_sq < 1e-6) return; 
 
     float invDist = isqrt(dist_sq);
     dx *= invDist;
     dy *= invDist;
 
-    // Reflect velocity using the direction from the endpoint
+    // reflect based off point deflection
     float dot_product = velx * dx + vely * dy;
     velx -= 2 * dot_product * dx;
     vely -= 2 * dot_product * dy;
 
-    // Move the ball slightly away to avoid re-colliding instantly
     ballx = px + dx * 2;
     bally = py + dy * 2;
 }
 
 void deflectBall(float x1, float y1, float x2, float y2) {
-    // Calculate direction vector of the line
     float dx = x2 - x1;
     float dy = y2 - y1;
-
-    // Calculate magnitude of the line vector
     float line_length = isqrt(dx * dx + dy * dy);
 
-    // Normalize the direction vector to calculate the normal
+    // calculate normal vector
     dx *= line_length;
     dy *= line_length;
-
-    // Calculate normal vector (perpendicular to the line)
     float nx = -dy;
     float ny = dx;
-
-    // Dot product of velocity and normal
     float dot_product = velx * nx + vely * ny;
 
     // if dot product is almost 0, ball is parallel to line
@@ -759,11 +802,21 @@ void deflectBall(float x1, float y1, float x2, float y2) {
         return;
     }
 
-    // Reflect the velocity
+    // reflect velocity
     velx = velx - 2 * dot_product * nx;
     vely = vely - 2 * dot_product * ny;
 }
 
+void portalTravel(int num){
+	if(num == 0){
+		ballx = portalx[1];
+		bally = portaly[1];
+	}
+	else{
+		ballx = portalx[0];
+		bally = portaly[0];
+	}
+}
 
 void keyboard(void){
 	volatile int *PS2_ptr = (int *)PS2_BASE;
@@ -775,7 +828,6 @@ void keyboard(void){
 		b2 = b3;
 		b3 = PS2_data & 0xFF;	
 	}	
-	HEX_PS2(b1, b2, b3);
 }
 
 void update_cursor(void){
