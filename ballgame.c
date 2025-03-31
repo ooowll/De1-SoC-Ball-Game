@@ -16,7 +16,7 @@
 #define AUDIO_BASE 0xFF203040
 #define CLOCK_BASE 0xFF202100
 #define CHAR_BASE 0x9000000
-
+#define line_max 20
 //Struct for Line
 typedef struct {
     float x;
@@ -62,16 +62,19 @@ int lives = 5;
 bool endpoint;
 
 
+int redx0, redy0, redx1, redy1;
+
+int level_erases_array[5] = {0, 0, 0, 0, 0};
 
 
 Point hitPoint;
 
 //Line array to store line points
-Line lineArray[10];
+Line lineArray[line_max];
+Line temp_line_array[line_max];
 bool placing_line = false;
 bool exceeded_length = false;
 int line_count = 0; 
-int line_max = 10;
 int max_line_length = 5000;
 
 //Variables for IO
@@ -79,6 +82,8 @@ bool led_array[10] = {0};
 char b1 = 0, b2 = 0, b3 = 0;
 
 //level variables
+int portalx[2];
+int portaly[2];
 int starx;
 int stary;
 int current_level = 1;
@@ -167,7 +172,180 @@ Line level2[] = {{{55, 120}, {180, 40}},
 				  {{170, 216}, {178, 216}},
 				  {{170, 217}, {178, 217}}, 
     };
-int obstacle_count[5] = {16, 48, 3, 3, 3};
+
+Line level3[] =  {{{40, 10}, {40, 170}},
+				  {{41, 10}, {41, 170}},
+				  {{42, 10}, {42, 170}},
+				  {{43, 10}, {43, 170}},
+				  {{44, 10}, {44, 170}},
+				  {{45, 10}, {45, 170}},
+				  {{46, 10}, {46, 170}},
+				  {{47, 10}, {47, 170}},
+				 
+				  {{80, 10}, {80, 170}},
+				  {{81, 10}, {81, 170}},
+				  {{82, 10}, {82, 170}},
+				  {{83, 10}, {83, 170}},
+				  {{84, 10}, {84, 170}},
+				  {{85, 10}, {85, 170}},
+				  {{86, 10}, {86, 170}},
+				  {{87, 10}, {87, 170}},
+				  
+				  {{80, 210}, {40, 170}},
+				  {{81, 210}, {41, 170}},
+				  {{82, 210}, {42, 170}},
+				  {{83, 210}, {43, 170}},
+				  {{84, 210}, {44, 170}},
+				  {{85, 210}, {45, 170}},
+				  {{86, 210}, {46, 170}},
+				  {{87, 210}, {47, 170}},
+				  
+				  {{80, 210}, {120, 170}},
+				  {{81, 210}, {121, 170}},
+				  {{82, 210}, {122, 170}},
+				  {{83, 210}, {123, 170}},
+				  {{84, 210}, {124, 170}},
+				  {{85, 210}, {125, 170}},
+				  {{86, 210}, {126, 170}},
+				  {{87, 210}, {127, 170}},
+				  
+				  {{200, 100}, {140, 170}},
+				  {{201, 100}, {141, 170}},
+				  {{202, 100}, {142, 170}},
+				  {{203, 100}, {143, 170}},
+				  {{204, 100}, {144, 170}},
+				  {{205, 100}, {145, 170}},
+				  {{206, 100}, {146, 170}},
+				  {{207, 100}, {147, 170}},
+				  
+				  {{250, 100}, {310, 170}},
+				  {{251, 100}, {311, 170}},
+				  {{252, 100}, {312, 170}},
+				  {{253, 100}, {313, 170}},
+				  {{254, 100}, {314, 170}},
+				  {{255, 100}, {315, 170}},
+				  {{256, 100}, {316, 170}},
+				  {{257, 100}, {317, 170}},
+				  
+				  {{140, 170}, {317, 170}},
+				  {{140, 171}, {317, 171}},
+				  {{140, 172}, {317, 172}},
+				  {{140, 173}, {317, 173}},
+				  {{140, 174}, {317, 174}},
+				  {{140, 175}, {317, 175}},
+				  {{140, 176}, {317, 176}},
+				  {{140, 177}, {317, 177}},
+
+    };
+
+Line level4[] =  {{{0, 10}, {50, 10}},
+				  {{0, 11}, {50, 11}},
+				  {{0, 12}, {50, 12}},
+				  {{0, 13}, {50, 13}},
+				  {{0, 14}, {50, 14}},
+				  {{0, 15}, {50, 15}},
+				  {{0, 16}, {50, 16}},
+				  {{0, 17}, {50, 17}},
+				  {{70, 10}, {319, 10}},
+				  {{70, 11}, {319, 11}},
+				  {{70, 12}, {319, 12}},
+				  {{70, 13}, {319, 13}},
+				  {{70, 14}, {319, 14}},
+				  {{70, 15}, {319, 15}},
+				  {{70, 16}, {319, 16}},
+				  {{70, 17}, {319, 17}},
+					
+				  {{0, 50}, {50, 50}},
+				  {{0, 51}, {50, 51}},
+				  {{0, 52}, {50, 52}},
+				  {{0, 53}, {50, 53}},
+				  {{0, 54}, {50, 54}},
+				  {{0, 55}, {50, 55}},
+				  {{0, 56}, {50, 56}},
+				  {{0, 57}, {50, 57}},
+				  {{70, 50}, {280, 50}},
+				  {{70, 51}, {280, 51}},
+				  {{70, 52}, {280, 52}},
+				  {{70, 53}, {280, 53}},
+				  {{70, 54}, {280, 54}},
+				  {{70, 55}, {280, 55}},
+				  {{70, 56}, {280, 56}},
+				  {{70, 57}, {280, 57}},
+				  
+				  {{0, 90}, {50, 90}},
+				  {{0, 91}, {50, 91}},
+				  {{0, 92}, {50, 92}},
+				  {{0, 93}, {50, 93}},
+				  {{0, 94}, {50, 94}},
+				  {{0, 95}, {50, 95}},
+				  {{0, 96}, {50, 96}},
+				  {{0, 97}, {50, 97}},
+				  {{70, 90}, {187, 90}},
+				  {{70, 91}, {187, 91}},
+				  {{70, 92}, {187, 92}},
+				  {{70, 93}, {187, 93}},
+				  {{70, 94}, {187, 94}},
+				  {{70, 95}, {187, 95}},
+				  {{70, 96}, {187, 96}},
+				  {{70, 97}, {187, 97}},
+				  
+				  {{0, 130}, {50, 130}},
+				  {{0, 131}, {50, 131}},
+				  {{0, 132}, {50, 132}},
+				  {{0, 133}, {50, 133}},
+				  {{0, 134}, {50, 134}},
+				  {{0, 135}, {50, 135}},
+				  {{0, 136}, {50, 136}},
+				  {{0, 137}, {50, 137}},
+				  {{100, 130}, {180, 130}},
+				  {{100, 131}, {180, 131}},
+				  {{100, 132}, {180, 132}},
+				  {{100, 133}, {180, 133}},
+				  {{100, 134}, {180, 134}},
+				  {{100, 135}, {180, 135}},
+				  {{100, 136}, {180, 136}},
+				  {{100, 137}, {180, 137}},
+				  
+				  {{180, 130}, {180, 239}},
+				  {{181, 130}, {181, 239}},
+				  {{182, 130}, {182, 239}},
+				  {{183, 130}, {183, 239}},
+				  {{184, 130}, {184, 239}},
+				  {{185, 130}, {185, 239}},
+				  {{186, 130}, {186, 239}},
+				  {{187, 130}, {187, 239}},
+				  
+				  {{260, 100}, {260, 239}},
+				  {{261, 100}, {261, 239}},
+				  {{262, 100}, {262, 239}},
+				  {{263, 100}, {263, 239}},
+				  {{264, 100}, {264, 239}},
+				  {{265, 100}, {265, 239}},
+				  {{266, 100}, {266, 239}},
+				  {{267, 100}, {267, 239}},
+				 
+				  {{260, 130}, {318, 130}},
+				  {{260, 131}, {318, 131}},
+				  {{260, 132}, {318, 132}},
+				  {{260, 133}, {318, 133}},
+				  {{260, 134}, {318, 134}},
+				  {{260, 135}, {318, 135}},
+				  {{260, 136}, {318, 136}},
+				  {{260, 137}, {318, 137}},
+				  
+				  
+    };
+
+Line level5[] =  {{{0, 10}, {50, 10}},
+				  {{0, 11}, {50, 11}},
+				  {{0, 12}, {50, 12}},
+				  {{0, 13}, {50, 13}},
+				  {{0, 14}, {50, 14}},
+				  {{0, 15}, {50, 15}},
+				  {{0, 16}, {50, 16}},
+				  {{0, 17}, {50, 17}},
+    };
+int obstacle_count[5] = {16, 48, 56, 88, 8};
 
 /* function prototypes */
 void clear_screen();
@@ -186,7 +364,7 @@ bool collision(float bx, float by, Point p1, Point p2);
 void deflectBall(float x1, float x2, float y1, float y2);
 void plot_hearts();
 void draw_level(int level);
-void draw_star(int x, int y);
+void draw_star(int x, int y, int line_color);
 int iround(float x);
 void writeCharacter(char character, int x, int y);
 void writeWord(char word[], int x, int y);
@@ -233,15 +411,10 @@ int main(void) {
 		}
 	}
     draw_level(current_level);
-	int redx0, redy0, redx1, redy1;
+	
     while (1) {
         draw_level(current_level);
-		keyboard();
-		for(int i = 0; i<line_max; i++){
-			if(lineArray[i].p1.x != -1 &&  lineArray[i].p1.y != -1 &&  lineArray[i].p2.x != -1 && lineArray[i].p2.y != -1){
-				draw_line(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y, 0xFFFF);	
-			}
-		}
+		keyboard();	
 		if(exceeded_length){
 			draw_line(redx0, redy0, redx1, redy1, 0x0);
 			exceeded_length = false;
@@ -269,6 +442,12 @@ int main(void) {
 		plot_ball(ballx, bally, 0xfd80);
 		plot_line_bar();
         plot_hearts();
+        for(int i = 0; i<line_max; i++){
+			if(lineArray[i].p1.x != -1 &&  lineArray[i].p1.y != -1 &&  lineArray[i].p2.x != -1 && lineArray[i].p2.y != -1){
+				draw_line(lineArray[i].p1.x, lineArray[i].p1.y, lineArray[i].p2.x, lineArray[i].p2.y, 0xFFFF);	
+			}
+		}
+
 		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
     }
@@ -449,7 +628,7 @@ void update_ball(void){
 			}
 		}
 		//Check for victory condition
-		if(ballx >= starx - 4 && ballx <= starx + 4 && bally >= stary - 4 && bally <= stary + 4){
+		if(ballx >= starx - 10 && ballx <= starx + 10 && bally >= stary - 10 && bally <= stary + 10){
 			printf("nia");
 			nextLevel();
 			return;
@@ -464,6 +643,7 @@ void nextLevel(){
 	toggle = true;
 	velx = 0;
 	vely = 0.5;
+    memcpy(temp_line_array, lineArray, sizeof(lineArray)); 
 	for(int i = 0; i<line_max; i++){
 		lineArray[i].p1.x = -1;
 		lineArray[i].p1.y = -1;
@@ -635,7 +815,14 @@ void update_cursor(void){
 		else {
 			direction_array[2] = -1;
 		}
+	}
+	if(b3 == 0x3A){
+		if(b2 == 0xF0){
+			nextLevel();
+			b3 = 0;
+		}
 	} 
+	
 	cursorx = cursorx+direction_array[0]+direction_array[3];
 	cursory = cursory+direction_array[1]+direction_array[2];
 	
@@ -677,6 +864,7 @@ void update_cursor(void){
 							printf("placed line with length %d\n", calculate_length((int)lineArray[line_count].p1.x,
 																					(int)lineArray[line_count].p2.y, 
 																					cursorx, cursory));
+                                                                                    exceeded_length = true;
 							if(max_line_length <= 0){
 								max_line_length = 0;	
 							}
@@ -801,16 +989,28 @@ int calculate_length(int x0, int y0, int x1, int y1){
 	return sqrt(abs((x0-x1)*(x0-x1)) + abs((y0-y1)*(y0-y1)));
 }
 
-void draw_star(int x, int y){
-	plot_pixel(x, y, 0xff60);
-	plot_pixel(x+3, y+3, 0xff60);
-	plot_pixel(x-3, y+3, 0xff60);
-	plot_pixel(x-3, y-3, 0xff60);
-	plot_pixel(x+3, y-3, 0xff60);
-	draw_line(x-2, y-2, x+2, y-2, 0xff60);
-	draw_line(x-2, y+2, x+2, y+2, 0xff60);
-	draw_line(x-2, y-2, x-2, y+2, 0xff60);
-	draw_line(x+2, y-2, x+2, y+3, 0xff60);
+void draw_star(int x, int y, int line_color){
+	plot_pixel(x, y, line_color);
+	plot_pixel(x+3, y+3, line_color);
+	plot_pixel(x-3, y+3, line_color);
+	plot_pixel(x-3, y-3, line_color);
+	plot_pixel(x+3, y-3, line_color);
+	draw_line(x-2, y-2, x+2, y-2, line_color);
+	draw_line(x-2, y+2, x+2, y+2, line_color);
+	draw_line(x-2, y-2, x-2, y+2, line_color);
+	draw_line(x+2, y-2, x+2, y+3, line_color);
+}
+
+void draw_portal(int x, int y, int line_color){
+	plot_pixel(x, y, line_color);
+	plot_pixel(x+3, y+3, line_color);
+	plot_pixel(x-3, y+3, line_color);
+	plot_pixel(x-3, y-3, line_color);
+	plot_pixel(x+3, y-3, line_color);
+	draw_line(x-2, y-2, x+2, y-2, line_color);
+	draw_line(x-2, y+2, x+2, y+2, line_color);
+	draw_line(x-2, y-2, x-2, y+2, line_color);
+	draw_line(x+2, y-2, x+2, y+3, line_color);
 }
 
 void plot_hearts(){
@@ -890,36 +1090,124 @@ void draw_level(int level){
 		}
 		starx = 20;
 		stary = 160;
-	}
+	} else {
+        if(level_erases_array[0]<2){
+            erase_level(1);
+            for(int i = 0; i<line_max; i++){
+                if(temp_line_array[i].p1.x != -1 &&  temp_line_array[i].p1.y != -1 &&  temp_line_array[i].p2.x != -1 && temp_line_array[i].p2.y != -1){
+                    draw_line(temp_line_array[i].p1.x, temp_line_array[i].p1.y, temp_line_array[i].p2.x, temp_line_array[i].p2.y, 0x0);	
+                }
+            }
+            level_erases_array[0]++;
+
+        }
+    }
 	
 	if(level == 2){
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0x059f);	
-		}
+		} 
 		starx = 174;
 		stary = 195;
+	} else if(level == 3) {
+        if(level_erases_array[1]<2){
+            erase_level(2);
+            for(int i = 0; i<line_max; i++){
+                if(temp_line_array[i].p1.x != -1 &&  temp_line_array[i].p1.y != -1 &&  temp_line_array[i].p2.x != -1 && temp_line_array[i].p2.y != -1){
+                    draw_line(temp_line_array[i].p1.x, temp_line_array[i].p1.y, temp_line_array[i].p2.x, temp_line_array[i].p2.y, 0x0);	
+                }
+            }
+            level_erases_array[1]++;
+        }
+    }
+	
+	if(level == 3){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level3[i].p1.x, level3[i].p1.y, level3[i].p2.x, level3[i].p2.y, 0x059f);	
+		}
+		starx = 225;
+		stary = 150;
+	} else if(level == 4) {
+        if(level_erases_array[2]<2){
+            erase_level(3);
+            for(int i = 0; i<line_max; i++){
+                if(temp_line_array[i].p1.x != -1 &&  temp_line_array[i].p1.y != -1 &&  temp_line_array[i].p2.x != -1 && temp_line_array[i].p2.y != -1){
+                    draw_line(temp_line_array[i].p1.x, temp_line_array[i].p1.y, temp_line_array[i].p2.x, temp_line_array[i].p2.y, 0x0);	
+                }
+            }
+            level_erases_array[2]++;
+        }
+    }
+	
+	if(level == 4){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level4[i].p1.x, level4[i].p1.y, level4[i].p2.x, level4[i].p2.y, 0x059f);	
+		}
+		starx = 220;
+		stary = 220;
+        portalx[0] = 300;
+        portaly[0] = 40;
+        portalx[1] = 160;
+        portaly[1] = 200;
+        draw_portal(portalx[0], portaly[0], 0xf81f);
+        draw_portal(portalx[1], portaly[1], 0xf81f);
+	} else if(level == 5) {
+        if(level_erases_array[3]<2){
+            erase_level(4);
+            for(int i = 0; i<line_max; i++){
+                if(temp_line_array[i].p1.x != -1 &&  temp_line_array[i].p1.y != -1 &&  temp_line_array[i].p2.x != -1 && temp_line_array[i].p2.y != -1){
+                    draw_line(temp_line_array[i].p1.x, temp_line_array[i].p1.y, temp_line_array[i].p2.x, temp_line_array[i].p2.y, 0x0);	
+                }
+            }
+            level_erases_array[3]++;
+        }
+    }
+
+    if(level == 5){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level5[i].p1.x, level5[i].p1.y, level5[i].p2.x, level5[i].p2.y, 0x059f);	
+		}
+		starx = 300;
+		stary = 100;
 	}
-	draw_star(starx, stary);
+	draw_star(starx, stary, 0xff60);
 }
 
 void erase_level(int level){
-
+    int erase_starx, erase_stary;;
 	if(level == 1){
     	for(int i = 0; i<obstacle_count[level-1]; i++){
-			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0);	
+			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0x0);	
 		}
-		starx = 20;
-		stary = 160;
-	}
-	
+		erase_starx = 20;
+		erase_stary = 160;
+	} 
 	if(level == 2){
     	for(int i = 0; i<obstacle_count[level-1]; i++){
-			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0);	
+			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0x0);	
 		}
-		starx = 174;
-		stary = 195;
-	}
-	draw_star(starx, stary);
+		erase_starx = 174;
+		erase_stary = 195;
+	} 	
+	
+	if(level == 3){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level3[i].p1.x, level3[i].p1.y, level3[i].p2.x, level3[i].p2.y, 0x0);	
+		}
+		erase_starx = 225;
+		erase_stary = 150;
+	} 
+
+    if(level == 4){
+    	for(int i = 0; i<obstacle_count[level-1]; i++){
+			draw_line(level4[i].p1.x, level4[i].p1.y, level4[i].p2.x, level4[i].p2.y, 0x0);	
+		}
+		erase_starx = 220;
+		erase_stary = 220;
+        draw_portal(300, 40, 0x0);
+        draw_portal(160, 200, 0x0);
+	} 
+	draw_star(erase_starx, erase_stary, 0x0);
 }
 
 int iround(float x){
