@@ -89,6 +89,7 @@ int stary;
 int current_level = 1;
 int previous_level = 1;
 
+int board_resetting = 0;
 
 Line level1[] = {{{0, 80}, {180, 80}},
 				  {{0, 81}, {180, 81}},
@@ -263,14 +264,14 @@ Line level4[] =  {{{0, 10}, {50, 10}},
 				  {{0, 55}, {50, 55}},
 				  {{0, 56}, {50, 56}},
 				  {{0, 57}, {50, 57}},
-				  {{70, 50}, {280, 50}},
-				  {{70, 51}, {280, 51}},
-				  {{70, 52}, {280, 52}},
-				  {{70, 53}, {280, 53}},
-				  {{70, 54}, {280, 54}},
-				  {{70, 55}, {280, 55}},
-				  {{70, 56}, {280, 56}},
-				  {{70, 57}, {280, 57}},
+				  {{70, 50}, {250, 50}},
+				  {{70, 51}, {250, 51}},
+				  {{70, 52}, {250, 52}},
+				  {{70, 53}, {250, 53}},
+				  {{70, 54}, {250, 54}},
+				  {{70, 55}, {250, 55}},
+				  {{70, 56}, {250, 56}},
+				  {{70, 57}, {250, 57}},
 				  
 				  {{0, 90}, {50, 90}},
 				  {{0, 91}, {50, 91}},
@@ -441,7 +442,19 @@ int main(void) {
 			redx1 = cursorx;
 			redy1 = cursory;
 		}
-		if(lives == 0) break;
+		if(lives == 0 || board_resetting > 0 || (b3 == 0x2D && b2 == 0xF0)) {
+			reset_board();
+			for(int i = 0; i<line_max; i++){
+                if(temp_line_array[i].p1.x != -1 &&  temp_line_array[i].p1.y != -1 &&  temp_line_array[i].p2.x != -1 && temp_line_array[i].p2.y != -1){
+                    draw_line(temp_line_array[i].p1.x, temp_line_array[i].p1.y, temp_line_array[i].p2.x, temp_line_array[i].p2.y, 0x0);	
+                }
+            }
+			board_resetting++;
+			if(board_resetting == 2){
+				board_resetting = 0;
+			}
+			b3 = 0;
+		}
 		plot_crosshair(cursorx, cursory, 0xFFFF);
 		plot_ball(ballx, bally, 0xfd80);
 		plot_line_bar();
@@ -690,21 +703,7 @@ void update_ball(void){
 	}	
 }
 void nextLevel(){
-	balldrop = false;
-	ballx = 60;
-	bally = 14;
-	toggle = true;
-	velx = 0;
-	vely = 0.5;
-    memcpy(temp_line_array, lineArray, sizeof(lineArray)); 
-	for(int i = 0; i<line_max; i++){
-		lineArray[i].p1.x = -1;
-		lineArray[i].p1.y = -1;
-		lineArray[i].p2.x = -1;
-		lineArray[i].p2.y = -1;
-	}
-	line_count = 0;
-	max_line_length = 5000;
+	reset_board();
 	current_level++;
 }
 
@@ -716,6 +715,27 @@ void liveLost(){
 	toggle = true;
 	velx = 0;
 	vely = 0.5;
+}
+
+void reset_board(){
+	balldrop = false;
+	ballx = 60;
+	bally = 14;
+	toggle = true;
+	velx = 0;
+	vely = 0.5;	
+	lives = 5;
+	if(board_resetting == 0){
+	memcpy(temp_line_array, lineArray, sizeof(lineArray)); 
+		for(int i = 0; i<line_max; i++){
+			lineArray[i].p1.x = -1;
+			lineArray[i].p1.y = -1;
+			lineArray[i].p2.x = -1;
+			lineArray[i].p2.y = -1;
+		}
+	}
+	line_count = 0;
+	max_line_length = 5000;
 }
 
 bool collision(float bx, float by, Point p1, Point p2) {
@@ -873,7 +893,9 @@ void update_cursor(void){
 			nextLevel();
 			b3 = 0;
 		}
-	} 
+	}
+	
+
 	
 	cursorx = cursorx+direction_array[0]+direction_array[3];
 	cursory = cursory+direction_array[1]+direction_array[2];
@@ -1053,16 +1075,32 @@ void draw_star(int x, int y, int line_color){
 	draw_line(x+2, y-2, x+2, y+3, line_color);
 }
 
+
 void draw_portal(int x, int y, int line_color){
-	plot_pixel(x, y, line_color);
-	plot_pixel(x+3, y+3, line_color);
-	plot_pixel(x-3, y+3, line_color);
-	plot_pixel(x-3, y-3, line_color);
-	plot_pixel(x+3, y-3, line_color);
-	draw_line(x-2, y-2, x+2, y-2, line_color);
-	draw_line(x-2, y+2, x+2, y+2, line_color);
-	draw_line(x-2, y-2, x-2, y+2, line_color);
-	draw_line(x+2, y-2, x+2, y+3, line_color);
+    plot_pixel(x, y - 6, line_color);
+    plot_pixel(x, y + 6, line_color);
+    plot_pixel(x - 6, y, line_color);
+    plot_pixel(x + 6, y, line_color);
+    plot_pixel(x - 5, y - 5, line_color);
+    plot_pixel(x + 5, y - 5, line_color);
+    plot_pixel(x - 5, y + 5, line_color);
+    plot_pixel(x + 5, y + 5, line_color);
+
+    // Middle ring
+    draw_line(x - 4, y - 4, x + 4, y - 4, line_color);
+    draw_line(x - 4, y + 4, x + 4, y + 4, line_color);
+    draw_line(x - 4, y - 4, x - 4, y + 4, line_color);
+    draw_line(x + 4, y - 4, x + 4, y + 4, line_color);
+    
+    // Inner swirl (core magic effect)
+    plot_pixel(x - 2, y, line_color);
+    plot_pixel(x + 2, y, line_color);
+    plot_pixel(x, y - 2, line_color);
+    plot_pixel(x, y + 2, line_color);
+    plot_pixel(x - 1, y - 1, line_color);
+    plot_pixel(x + 1, y - 1, line_color);
+    plot_pixel(x - 1, y + 1, line_color);
+    plot_pixel(x + 1, y + 1, line_color);
 }
 
 void plot_hearts(){
@@ -1199,10 +1237,10 @@ void draw_level(int level){
 		stary = 220;
         portalx[0] = 300;
         portaly[0] = 40;
-        portalx[1] = 160;
+        portalx[1] = 120;
         portaly[1] = 200;
-        draw_portal(portalx[0], portaly[0], 0xf81f);
-        draw_portal(portalx[1], portaly[1], 0xf81f);
+        draw_portal(portalx[0], portaly[0], 0xc81f);
+        draw_portal(portalx[1], portaly[1], 0xc81f);
 	} else if(level == 5) {
         if(level_erases_array[3]<2){
             erase_level(4);
@@ -1257,7 +1295,7 @@ void erase_level(int level){
 		erase_starx = 220;
 		erase_stary = 220;
         draw_portal(300, 40, 0x0);
-        draw_portal(160, 200, 0x0);
+        draw_portal(120, 200, 0x0);
 	} 
 	draw_star(erase_starx, erase_stary, 0x0);
 }
@@ -1290,6 +1328,8 @@ void writeWord(char word[], int x, int y){
 		//writeCharacter(word[i], x, y + i);
 	}
 }
+
+
 
 void drawMenu(){
 	char word1[] = "PRESS [SPACE]";
