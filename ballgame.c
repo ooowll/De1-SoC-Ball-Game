@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdbool.h>
-#include <math.h>	
 #include <stdint.h>
 #include <string.h>
 
@@ -1527,4 +1526,19 @@ void drawMenu(){
 		int randy = 10 + rand() % 41;
 		writeWord(word1, randx, randy);
 	}
+}
+
+double sqrt(double n) {
+	//Make sure the number is non-negative
+    if (n < 0) {
+        return -1; 
+    }
+    double x = n;
+    double epsilon = 0.00001;
+    // Newton-Raphson formula
+    while ((x * x - n) > epsilon || (n - x * x) > epsilon) {
+        x = 0.5 * (x + n / x); 
+    }
+    
+    return x;
 }
