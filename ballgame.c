@@ -63,6 +63,7 @@ int portalDelayCount = 0;
 
 int redx0, redy0, redx1, redy1;
 
+int level_draw_array[5] = {0, 0, 0, 0, 0};
 int level_erases_array[5] = {0, 0, 0, 0, 0};
 
 
@@ -588,8 +589,6 @@ int main(void) {
 		}
 		attemptsHex();
 	}
-    draw_level(current_level);
-	
     while (1) {
 		attemptsHex();
         draw_level(current_level);
@@ -846,24 +845,24 @@ void update_ball(void){
 				}
 			}
 		}
-		if(current_level == 4){
-			int size =  sizeof(level4) / sizeof(level4[0]);
-			for (int i = 0; i < size; i++){
-				if(collision(ballx, bally, level4[i].p1, level4[i].p2)){
-					liveLost();
-					break;
-				}
-			}
-		}
-		if(current_level == 5){
-			int size =  sizeof(level5) / sizeof(level5[0]);
-			for (int i = 0; i < size; i++){
-				if(collision(ballx, bally, level5[i].p1, level5[i].p2)){
-					liveLost();
-					break;
-				}
-			}
-		}
+		// if(current_level == 4){
+		// 	int size =  sizeof(level4) / sizeof(level4[0]);
+		// 	for (int i = 0; i < size; i++){
+		// 		if(collision(ballx, bally, level4[i].p1, level4[i].p2)){
+		// 			liveLost();
+		// 			break;
+		// 		}
+		// 	}
+		// }
+		// if(current_level == 5){
+		// 	int size =  sizeof(level5) / sizeof(level5[0]);
+		// 	for (int i = 0; i < size; i++){
+		// 		if(collision(ballx, bally, level5[i].p1, level5[i].p2)){
+		// 			liveLost();
+		// 			break;
+		// 		}
+		// 	}
+		// }
 		//Collision with portal
 		for(int i = 0; i < 2; i++){
 			if(ballx >= portalx[i] - 4 && ballx <= portalx[i] + 4 && bally >= portaly[i] - 4 && bally <= portaly[i] + 4){
@@ -1098,7 +1097,48 @@ void update_cursor(void){
 	if(cursory-2 <= y_min){
 		cursory = y_min+2;	
 	}
-	
+	if(current_level == 1){
+		for(int i = 0; i < sizeof(level1)/sizeof(level1[0]); i++){
+			if(collision(cursorx, cursory, level1[i].p1, level1[i].p2)){
+				cursorx = cursorx-direction_array[0]-direction_array[3];
+				cursory = cursory-direction_array[1]-direction_array[2];
+			}
+		}
+	}
+	if(current_level == 2){
+		for(int i = 0; i < sizeof(level2)/sizeof(level2[0]); i++){
+			if(collision(cursorx, cursory, level2[i].p1, level2[i].p2)){
+				cursorx = cursorx-direction_array[0]-direction_array[3];
+				cursory = cursory-direction_array[1]-direction_array[2];
+			}
+		}
+	}
+
+	if(current_level == 3){
+		for(int i = 0; i < sizeof(level3)/sizeof(level3[0]); i++){
+			if(collision(cursorx, cursory, level3[i].p1, level3[i].p2)){
+				cursorx = cursorx-direction_array[0]-direction_array[3];
+				cursory = cursory-direction_array[1]-direction_array[2];
+			}
+		}
+	}
+	if(current_level == 4){
+		for(int i = 0; i < sizeof(level4)/sizeof(level4[0]); i++){
+			if(collision(cursorx, cursory, level4[i].p1, level4[i].p2)){
+				cursorx = cursorx-direction_array[0]-direction_array[3];
+				cursory = cursory-direction_array[1]-direction_array[2];
+			}
+		}
+	}
+
+	// if(current_level == 5){
+	// 	for(int i = 0; i < sizeof(level5)/sizeof(level5[0]); i++){
+	// 		if(collision(cursorx, cursory, level5[i].p1, level5[i].p2)){
+	// 			cursorx = cursorx-direction_array[0]-direction_array[3];
+	// 			cursory = cursory-direction_array[1]-direction_array[2];
+	// 		}
+	// 	}
+	// }
 	//line placing
 	if(line_count < line_max){
 		if(b3 == 0x5A){
@@ -1121,9 +1161,6 @@ void update_cursor(void){
 							max_line_length -= calculate_length((int)lineArray[line_count].p1.x, 
 																(int)lineArray[line_count].p2.y, 
 																cursorx, cursory);
-							printf("placed line with length %d\n", calculate_length((int)lineArray[line_count].p1.x,
-																					(int)lineArray[line_count].p2.y, 
-																					cursorx, cursory));
                                                                                     exceeded_length = true;
 							if(max_line_length <= 0){
 								max_line_length = 0;	
@@ -1360,13 +1397,15 @@ void plot_hearts(){
 
 void draw_level(int level){
 
-	if(level == 1){
+	if(level == 1 && level_draw_array[0] < 2){
+		printf("1\n");
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level1[i].p1.x, level1[i].p1.y, level1[i].p2.x, level1[i].p2.y, 0x059f);	
 		}
 		starx = 20;
 		stary = 160;
-	} else {
+		level_draw_array[0]++;
+	} else if(level == 2){
         if(level_erases_array[0]<2){
             erase_level(1);
             for(int i = 0; i<line_max; i++){
@@ -1375,16 +1414,17 @@ void draw_level(int level){
                 }
             }
             level_erases_array[0]++;
-
         }
     }
 	
-	if(level == 2){
+	if(level == 2&& level_draw_array[1] < 2){
+		printf("2\n");
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level2[i].p1.x, level2[i].p1.y, level2[i].p2.x, level2[i].p2.y, 0x059f);	
 		} 
 		starx = 174;
 		stary = 195;
+		level_draw_array[1]++;
 	} else if(level == 3) {
         if(level_erases_array[1]<2){
             erase_level(2);
@@ -1397,12 +1437,14 @@ void draw_level(int level){
         }
     }
 	
-	if(level == 3){
+	if(level == 3 && level_draw_array[2] < 2){
+		printf("3\n");
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level3[i].p1.x, level3[i].p1.y, level3[i].p2.x, level3[i].p2.y, 0x059f);	
 		}
 		starx = 225;
 		stary = 150;
+		level_draw_array[2]++;
 	} else if(level == 4) {
         if(level_erases_array[2]<2){
             erase_level(3);
@@ -1415,7 +1457,8 @@ void draw_level(int level){
         }
     }
 	
-	if(level == 4){
+	if(level == 4 && level_draw_array[3] < 2){
+		printf("4\n");
     	for(int i = 0; i<obstacle_count[level-1]; i++){
 			draw_line(level4[i].p1.x, level4[i].p1.y, level4[i].p2.x, level4[i].p2.y, 0x059f);	
 		}
@@ -1427,6 +1470,8 @@ void draw_level(int level){
         portaly[1] = 200;
         draw_portal(portalx[0], portaly[0], 0xc81f);
         draw_portal(portalx[1], portaly[1], 0xc81f);
+		level_draw_array[3]++;
+
 	} else if(level == 5) {
         if(level_erases_array[3]<2){
             erase_level(4);
@@ -1439,7 +1484,7 @@ void draw_level(int level){
         }
     }
 
-    if(level == 5){
+    if(level == 5  && level_draw_array[4] < 2){
     	for(int i = 0; i< obstacle_count[level- 1]; i++){
 			draw_line(level5[i].p1.x, level5[i].p1.y, level5[i].p2.x, level5[i].p2.y, 0x059f);	
 		}
@@ -1451,8 +1496,10 @@ void draw_level(int level){
         portaly[1] = 35;
         draw_portal(portalx[0], portaly[0], 0xc81f);
         draw_portal(portalx[1], portaly[1], 0xc81f);
+		level_draw_array[4]++;
 	}
-	draw_star(starx, stary, 0xff60);
+	
+	//draw_star(starx, stary, 0xff60);
 }
 
 void erase_level(int level){
