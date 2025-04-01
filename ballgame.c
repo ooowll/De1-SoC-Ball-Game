@@ -336,7 +336,8 @@ Line level4[] =  {{{0, 10}, {50, 10}},
 				  
     };
 
-Line level5[] =  {{{0, 30}, {40, 30}},
+Line level5[] =  
+{{{0, 30}, {40, 30}},
 {{0, 31}, {40, 31}},
 {{0, 32}, {40, 32}},
 {{0, 33}, {40, 33}},
@@ -519,7 +520,7 @@ Line level5[] =  {{{0, 30}, {40, 30}},
 {{295, 110}, {320, 110}},
     };
 
-int obstacle_count[5] = {16, 48, 56, 88, 8};
+int obstacle_count[5] = {16, 48, 56, 88, 169};
 
 /* function prototypes */
 void clear_screen();
@@ -548,7 +549,7 @@ void erase_level(int level);
 void nextLevel();
 void reflectOffPoint(float px, float py);
 void attemptsHex();
-void playLossNoise();
+void playBounce();
 
 int main(void) {
     volatile int *LEDR = LEDR_BASE;
@@ -791,6 +792,9 @@ void update_ball(void){
 			for(int j = 0; j < line_count; j++){
 				endpoint = false;
 				if (collision(ballx, bally, lineArray[j].p1, lineArray[j].p2)) {
+					for(int k = 0; k < 10; k++){
+						playBounce();
+					}
 					if(endpoint){
 						reflectOffPoint(hitPoint.x, hitPoint.y);
 					}
@@ -1436,7 +1440,7 @@ void draw_level(int level){
     }
 
     if(level == 5){
-    	for(int i = 0; i< sizeof(level5) / sizeof(level5[0]); i++){
+    	for(int i = 0; i< obstacle_count[level- 1]; i++){
 			draw_line(level5[i].p1.x, level5[i].p1.y, level5[i].p2.x, level5[i].p2.y, 0x059f);	
 		}
 		starx = 300;
@@ -1541,4 +1545,31 @@ double sqrt(double n) {
     }
     
     return x;
+}
+
+void playBounce()
+{
+    volatile int *audio_ptr = (int *)AUDIO_BASE;
+    int lossSamplePeriod = 40;
+    // high
+    for (int i = 0; i < lossSamplePeriod / 2; i++)
+    {
+        int fifospace = *(audio_ptr + 1);
+        if ((fifospace & 0x00FF0000) > 0)
+        {
+            *(audio_ptr + 2) = 0x7FFFFFF;
+            *(audio_ptr + 3) = 0x7FFFFFF;
+        }
+    }
+
+    // low
+    for (int j = 0; j < lossSamplePeriod / 2; j++)
+    {
+        int fifospace = *(audio_ptr + 1);
+        if ((fifospace & 0x00FF0000) > 0)
+        {
+            *(audio_ptr + 2) = 0;
+            *(audio_ptr + 3) = 0;
+        }
+    }
 }
