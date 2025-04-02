@@ -82,8 +82,8 @@ bool led_array[10] = {0};
 char b1 = 0, b2 = 0, b3 = 0;
 
 //level variables
-int portalx[2];
-int portaly[2];
+int portalx[2] = {-1, -1};
+int portaly[2] = {-1, -1};
 int starx;
 int stary;
 int current_level = 1;
@@ -1592,8 +1592,6 @@ void draw_level(int level){
         portaly[0] = 40;
         portalx[1] = 120;
         portaly[1] = 200;
-        draw_portal(portalx[0], portaly[0], 0xc81f);
-        draw_portal(portalx[1], portaly[1], 0xc81f);
 		level_draw_array[3]++;
 
 	} else if(level == 5) {
@@ -1618,12 +1616,13 @@ void draw_level(int level){
         portaly[0] = 215;
         portalx[1] = 300;
         portaly[1] = 35;
-        draw_portal(portalx[0], portaly[0], 0xc81f);
-        draw_portal(portalx[1], portaly[1], 0xc81f);
 		level_draw_array[4]++;
 	}
-	
-	//draw_star(starx, stary, 0xff60);
+	if(portalx[0] != -1){
+		draw_portal(portalx[0], portaly[0], 0xc81f);
+		draw_portal(portalx[1], portaly[1], 0xc81f);
+	}
+	draw_star(starx, stary, 0xff60);
 }
 
 void erase_level(int level){
